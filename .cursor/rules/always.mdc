@@ -8,6 +8,8 @@ alwaysApply: true
 
     Look at [PROJECT_OVERVIEW.md](mdc:PROJECT_OVERVIEW.md) & [TASKS.md](mdc:TASKS.md) when starting a new chat.
 
+    Always use port :3000 for local development. 
+
     Frontend
 
     Key Principles
