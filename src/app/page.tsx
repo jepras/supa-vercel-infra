@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { SupabaseTest } from "@/components/supabase-test"
 
 export default function Home() {
   return (
@@ -128,7 +129,7 @@ export default function Home() {
         </div>
 
         {/* Responsive test */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
           <Card className="border-orange-200 dark:border-orange-800">
             <CardContent className="p-4">
               <p className="text-foreground font-semibold">Mobile: 1 column</p>
@@ -144,6 +145,12 @@ export default function Home() {
               <p className="text-foreground font-semibold">Desktop: 3+ columns</p>
             </CardContent>
           </Card>
+        </div>
+
+        {/* Supabase Connection Test */}
+        <div className="text-center mb-8">
+          <h2 className="text-2xl font-bold mb-6 text-foreground">🔗 Database Connection Test</h2>
+          <SupabaseTest />
         </div>
       </div>
     </main>
