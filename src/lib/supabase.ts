@@ -16,4 +16,6 @@ export const createServerSupabaseClient = () => {
       persistSession: false
     }
   })
-} 
+}
+
+ 
