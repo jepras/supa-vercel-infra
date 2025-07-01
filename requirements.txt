@@ -1,0 +1,21 @@
+# Supabase and database
+supabase
+
+# HTTP client for API calls
+httpx
+requests
+
+# Token encryption
+cryptography
+
+# OpenAI for sales opportunity analysis
+openai
+
+# Pydantic for data models
+pydantic
+
+# Environment utilities
+python-dotenv
+
+# Logging and error handling
+structlog 
