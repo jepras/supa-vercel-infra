@@ -9,5 +9,5 @@ __pycache__/
 *.pyd
 
 # Local development files
-.env.local
+# .env.local  # Commented out to allow Vercel to access env vars
 .env.*.local 

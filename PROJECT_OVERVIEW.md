@@ -402,21 +402,6 @@ OUTLOOK_CONFIG = {
 ## Environment Configuration
 
 
-### Vercel Configuration (vercel.json)
-```json
-{
-  "functions": {
-    "api/**/*.py": {
-      "runtime": "python3.9"
-    }
-  },
-  "env": {
-    "SUPABASE_URL": "@supabase_url",
-    "SUPABASE_SERVICE_ROLE_KEY": "@supabase_service_key"
-  }
-}
-```
-
 ## Development Workflow
 
 ### Initial Setup
