@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/components/auth-provider'
+import { ConnectivityTest } from '@/components/connectivity-test'
 
 interface Integration {
   id: string
@@ -236,6 +237,7 @@ export default function DashboardPage() {
           <TabsList>
             <TabsTrigger value="integrations">Integrations</TabsTrigger>
             <TabsTrigger value="activity">Activity Logs</TabsTrigger>
+            <TabsTrigger value="connectivity">Connectivity Test</TabsTrigger>
           </TabsList>
 
           <TabsContent value="integrations" className="space-y-6">
@@ -353,6 +355,10 @@ export default function DashboardPage() {
                 )}
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="connectivity" className="space-y-4">
+            <ConnectivityTest />
           </TabsContent>
         </Tabs>
       </div>

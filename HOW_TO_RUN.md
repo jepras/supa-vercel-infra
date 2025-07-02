@@ -135,7 +135,7 @@ npx vercel --prod
 npx vercel
 ```
 
-**Production Frontend URL**: https://your-app.vercel.app
+**Production Frontend URL**: jepras-supa-vercel-infra.vercel.app
 
 ### Backend Deployment (Railway)
 ```bash
@@ -145,7 +145,7 @@ cd backend
 railway up
 ```
 
-**Production Backend URL**: https://your-app.railway.app
+**Production Backend URL**: supa-vercel-infra-production.up.railway.app
 
 ### Database Deployment (Supabase)
 ```bash
