@@ -132,21 +132,27 @@ This document breaks down the Next.js Frontend + Railway Python Backend SaaS app
 ## Phase 3: OAuth Integration Framework
 
 ### 3.0 Frontend-Backend Connectivity Test
-**Priority**: High | **Manual Intervention**: None | **Estimated Time**: 1 hour
+**Priority**: High | **Manual Intervention**: Required | **Estimated Time**: 1 hour
 
 #### Tasks:
-- [ ] Create simple API endpoint in backend for testing
-- [ ] Create frontend component to test backend connection
-- [ ] Implement error handling for connection failures
-- [ ] Test with both local and production backend URLs
-- [ ] Verify CORS configuration is working
+- [x] Create simple API endpoint in backend for testing
+- [x] Create frontend component to test backend connection
+- [x] Implement error handling for connection failures
+- [x] Test with both local and production backend URLs
+- [x] Verify CORS configuration is working
+- [x] Implement dynamic backend URL selection (localhost for dev, Railway for prod)
+- [x] Fix CORS configuration for production domains
+
+#### Manual Intervention Required:
+- [x] Set FRONTEND_URL environment variable in Railway backend to Vercel domain
 
 #### Verification:
-- [ ] Frontend can successfully call backend API
-- [ ] Error handling works when backend is unavailable
-- [ ] CORS allows frontend to access backend
-- [ ] Connection works in both development and production
-- [ ] Response times are acceptable
+- [x] Frontend can successfully call backend API
+- [x] Error handling works when backend is unavailable
+- [x] CORS allows frontend to access backend
+- [x] Connection works in both development and production
+- [x] Response times are acceptable
+- [x] Build cache issues resolved with fresh deployment
 
 ### 3.1 OAuth Manager Implementation
 **Priority**: High | **Manual Intervention**: Required | **Estimated Time**: 3-4 hours
