@@ -1,7 +1,7 @@
 # Project Implementation Tasks
 
 ## Overview
-This document breaks down the Vercel Hybrid Frontend + Python Serverless SaaS application into implementable tasks with clear verification criteria and manual intervention requirements.
+This document breaks down the Next.js Frontend + Railway Python Backend SaaS application into implementable tasks with clear verification criteria and manual intervention requirements.
 
 ## Phase 1: Project Foundation & Setup
 
@@ -10,7 +10,7 @@ This document breaks down the Vercel Hybrid Frontend + Python Serverless SaaS ap
 
 #### Tasks:
 - [x] Create Next.js project with TypeScript and Tailwind CSS (latest version)
-- [x] Set up project directory structure (src/, api/, supabase/, etc.)
+- [x] Set up project directory structure (src/, backend/, supabase/, etc.)
 - [x] Initialize Git repository
 - [x] Create initial package.json with required dependencies
 - [x] Set up Tailwind CSS configuration
@@ -22,7 +22,31 @@ This document breaks down the Vercel Hybrid Frontend + Python Serverless SaaS ap
 - [x] TypeScript compilation works
 - [x] Tailwind CSS is working
 
-### 1.2 Supabase Database Setup with Migrations
+### 1.2 Railway Backend Setup
+**Priority**: Critical | **Manual Intervention**: Required | **Estimated Time**: 2-3 hours
+
+#### Tasks:
+- [x] Create FastAPI backend structure in backend/ directory
+- [x] Set up FastAPI application with basic health endpoint
+- [x] Create Dockerfile for Railway deployment
+- [x] Configure requirements.txt with FastAPI dependencies
+- [x] Set up .dockerignore file
+- [x] Test Docker build locally
+- [x] Deploy to Railway for testing
+
+#### Manual Intervention Required:
+- [x] Create Railway account and project
+- [x] Configure Railway environment variables
+- [x] Set root directory to `backend` in Railway
+
+#### Verification:
+- [x] FastAPI app starts locally with uvicorn
+- [x] Docker image builds successfully
+- [x] Railway deployment is live and accessible
+- [x] Health endpoint responds correctly
+- [x] Environment variables are properly configured
+
+### 1.3 Supabase Database Setup with Migrations
 **Priority**: Critical | **Manual Intervention**: Required | **Estimated Time**: 2-3 hours
 
 #### Tasks:
@@ -42,31 +66,33 @@ This document breaks down the Vercel Hybrid Frontend + Python Serverless SaaS ap
 #### Verification:
 - [x] Database tables exist with correct schema
 - [x] RLS policies are active and working
-- [x] Can connect to database from both frontend and Python functions
+- [x] Can connect to database from both frontend and backend
 - [x] Test data can be inserted and retrieved
 - [x] Migrations can be applied and rolled back
 - [x] Performance indexes are created
 
-### 1.3 Environment Configuration
+### 1.4 Environment Configuration
 **Priority**: Critical | **Manual Intervention**: Required | **Estimated Time**: 30 minutes
 
 #### Tasks:
 - [x] Create .env.local file for local development
-- [x] Set up Vercel environment variables
+- [x] Set up Vercel environment variables for frontend
+- [x] Set up Railway environment variables for backend
 - [x] Configure environment variable validation
-- [x] Create .vercelignore to exclude Supabase config from deployments
-- [x] Fix Vercel deployment issues (Python cache files, Supabase CLI interference)
+- [x] Create .vercelignore to exclude backend from frontend deployment
 
 #### Manual Intervention Required:
 - [x] Obtain Supabase credentials
 - [x] Set up Vercel project and configure environment variables
+- [x] Set up Railway project and configure environment variables
 - [x] Update Supabase Auth redirect URLs for production
 
 #### Verification:
 - [x] Environment variables are accessible in both frontend and backend
 - [x] No sensitive data is exposed in client-side code
 - [x] Vercel deployment can access all required variables
-- [x] Vercel deployment completes successfully without errors
+- [x] Railway deployment can access all required variables
+- [x] Both deployments complete successfully without errors
 - [x] Production redirect URLs work correctly for authentication
 
 ## Phase 2: Authentication & User Management
@@ -109,7 +135,7 @@ This document breaks down the Vercel Hybrid Frontend + Python Serverless SaaS ap
 **Priority**: High | **Manual Intervention**: Required | **Estimated Time**: 3-4 hours
 
 #### Tasks:
-- [ ] Create OAuth manager utility functions
+- [ ] Create OAuth manager utility functions in backend
 - [ ] Implement token encryption/decryption
 - [ ] Create OAuth flow handlers for Pipedrive and Outlook
 - [ ] Set up token refresh logic
@@ -118,7 +144,7 @@ This document breaks down the Vercel Hybrid Frontend + Python Serverless SaaS ap
 #### Manual Intervention Required:
 - [ ] Register applications with Pipedrive Developer Hub
 - [ ] Register applications with Microsoft Azure AD
-- [ ] Configure redirect URIs for OAuth callbacks
+- [ ] Configure redirect URIs for OAuth callbacks (Railway URLs)
 
 #### Verification:
 - [ ] OAuth flows can be initiated
@@ -205,7 +231,7 @@ This document breaks down the Vercel Hybrid Frontend + Python Serverless SaaS ap
 **Priority**: High | **Manual Intervention**: Required | **Estimated Time**: 3-4 hours
 
 #### Tasks:
-- [ ] Create OpenAI integration
+- [ ] Create OpenAI integration in backend
 - [ ] Implement email analysis function
 - [ ] Create opportunity detection logic
 - [ ] Implement confidence scoring
@@ -228,7 +254,7 @@ This document breaks down the Vercel Hybrid Frontend + Python Serverless SaaS ap
 **Priority**: High | **Manual Intervention**: Required | **Estimated Time**: 2-3 hours
 
 #### Tasks:
-- [ ] Create Outlook webhook endpoint
+- [ ] Create Outlook webhook endpoint in Railway backend
 - [ ] Implement webhook validation
 - [ ] Create email processing pipeline
 - [ ] Add webhook error handling
@@ -237,7 +263,7 @@ This document breaks down the Vercel Hybrid Frontend + Python Serverless SaaS ap
 
 #### Manual Intervention Required:
 - [ ] Configure Outlook webhook subscription
-- [ ] Set up webhook endpoint URL in Microsoft Graph
+- [ ] Set up webhook endpoint URL in Microsoft Graph (Railway URL)
 
 #### Verification:
 - [ ] Webhooks are received correctly
@@ -270,7 +296,7 @@ This document breaks down the Vercel Hybrid Frontend + Python Serverless SaaS ap
 **Priority**: High | **Manual Intervention**: None | **Estimated Time**: 2-3 hours
 
 #### Tasks:
-- [ ] Create error handler decorator for Python functions
+- [ ] Create error handler decorator for FastAPI endpoints
 - [ ] Implement structured logging system
 - [ ] Create error response utilities
 - [ ] Add error tracking and monitoring
@@ -304,7 +330,7 @@ This document breaks down the Vercel Hybrid Frontend + Python Serverless SaaS ap
 **Priority**: Medium | **Manual Intervention**: None | **Estimated Time**: 4-5 hours
 
 #### Tasks:
-- [ ] Set up testing framework
+- [ ] Set up testing framework for both frontend and backend
 - [ ] Write tests for authentication
 - [ ] Test OAuth flows
 - [ ] Test AI analysis functions
@@ -342,16 +368,38 @@ This document breaks down the Vercel Hybrid Frontend + Python Serverless SaaS ap
 
 ## Phase 8: Deployment & Production
 
-### 8.1 Vercel Deployment
+### 8.1 Railway Backend Deployment
+**Priority**: High | **Manual Intervention**: Required | **Estimated Time**: 1-2 hours
+
+#### Tasks:
+- [x] Configure Railway project
+- [x] Set up environment variables
+- [x] Configure Python runtime
+- [x] Set up custom domains (if needed)
+- [x] Configure deployment settings
+- [x] Deploy database migrations
+
+#### Manual Intervention Required:
+- [x] Create Railway account and project
+- [x] Configure environment variables in Railway dashboard
+- [x] Set up custom domain (optional)
+
+#### Verification:
+- [x] Backend deploys successfully
+- [x] All endpoints work in production
+- [x] Environment variables are accessible
+- [x] Performance is acceptable
+- [x] Database migrations are applied
+
+### 8.2 Vercel Frontend Deployment
 **Priority**: High | **Manual Intervention**: Required | **Estimated Time**: 1-2 hours
 
 #### Tasks:
 - [ ] Configure Vercel project
 - [ ] Set up environment variables
-- [ ] Configure Python runtime
+- [ ] Configure Next.js settings
 - [ ] Set up custom domains (if needed)
 - [ ] Configure deployment settings
-- [ ] Deploy database migrations
 
 #### Manual Intervention Required:
 - [ ] Create Vercel account and project
@@ -359,25 +407,25 @@ This document breaks down the Vercel Hybrid Frontend + Python Serverless SaaS ap
 - [ ] Set up custom domain (optional)
 
 #### Verification:
-- [ ] Application deploys successfully
-- [ ] All functions work in production
+- [ ] Frontend deploys successfully
+- [ ] All pages work in production
 - [ ] Environment variables are accessible
 - [ ] Performance is acceptable
-- [ ] Database migrations are applied
+- [ ] API calls to Railway backend work
 
-### 8.2 Production Configuration
+### 8.3 Production Configuration
 **Priority**: Medium | **Manual Intervention**: Required | **Estimated Time**: 2-3 hours
 
 #### Tasks:
-- [ ] Configure production OAuth redirect URIs
-- [ ] Set up production webhook endpoints
+- [ ] Configure production OAuth redirect URIs (Railway URLs)
+- [ ] Set up production webhook endpoints (Railway URLs)
 - [ ] Configure monitoring and logging
 - [ ] Set up error tracking
 - [ ] Configure backup strategies
 - [ ] Test production real-time functionality
 
 #### Manual Intervention Required:
-- [ ] Update OAuth app configurations with production URLs
+- [ ] Update OAuth app configurations with production Railway URLs
 - [ ] Configure production webhook subscriptions
 - [ ] Set up monitoring tools (optional)
 
@@ -426,13 +474,13 @@ This document breaks down the Vercel Hybrid Frontend + Python Serverless SaaS ap
 ## Critical Path Analysis
 
 ### Must-Have for MVP:
-1. **Phase 1**: Project Foundation & Setup (with migrations)
+1. **Phase 1**: Project Foundation & Setup (with Railway backend and migrations)
 2. **Phase 2**: Authentication & User Management
 3. **Phase 3**: OAuth Integration Framework (Pipedrive only initially)
 4. **Phase 4**: Real-time Activity Logs & Monitoring
 5. **Phase 5**: AI Processing & Webhooks (basic implementation)
 6. **Phase 6**: Error Handling & Logging
-7. **Phase 8**: Vercel Deployment
+7. **Phase 8**: Railway Backend Deployment + Vercel Frontend Deployment
 
 ### Nice-to-Have for Enhanced Version:
 1. **Phase 7**: Comprehensive Testing
@@ -442,16 +490,17 @@ This document breaks down the Vercel Hybrid Frontend + Python Serverless SaaS ap
 
 ### Required Manual Steps:
 1. **Supabase Setup**: Create account and project
-2. **OAuth Provider Registration**: 
+2. **Railway Setup**: Create account and project for backend
+3. **Vercel Setup**: Create account and project for frontend
+4. **OAuth Provider Registration**: 
    - Pipedrive Developer Hub app creation
    - Microsoft Azure AD app registration
-3. **API Key Acquisition**: OpenAI API key
-4. **Vercel Deployment**: Project creation and environment variable configuration
-5. **Production Configuration**: Update OAuth redirect URIs and webhook endpoints
+5. **API Key Acquisition**: OpenAI API key
+6. **Production Configuration**: Update OAuth redirect URIs and webhook endpoints
 
-### Estimated Manual Time: 3-4 hours
+### Estimated Manual Time: 4-5 hours
 ### Estimated Development Time: 30-40 hours
-### Total Project Time: 33-44 hours
+### Total Project Time: 34-45 hours
 
 ## Risk Assessment
 
@@ -459,12 +508,14 @@ This document breaks down the Vercel Hybrid Frontend + Python Serverless SaaS ap
 - OAuth provider approval processes
 - Webhook reliability and delivery
 - AI analysis accuracy and cost
+- Railway deployment complexity
 
 ### Medium Risk:
-- Vercel Python function limitations
+- Railway Python application scaling
 - Supabase RLS policy complexity
 - Real-time data synchronization
 - Database migration complexity
+- Frontend-backend communication
 
 ### Low Risk:
 - Frontend UI implementation
@@ -480,6 +531,7 @@ This document breaks down the Vercel Hybrid Frontend + Python Serverless SaaS ap
 - [ ] Zero security vulnerabilities
 - [ ] Real-time updates work within 1 second
 - [ ] Comprehensive error logging and handling
+- [ ] Railway backend uptime >99.9%
 
 ### Business Metrics:
 - [ ] Users can complete OAuth flows successfully

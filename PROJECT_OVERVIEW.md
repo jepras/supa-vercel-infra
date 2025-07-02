@@ -1,20 +1,20 @@
-# Vercel Hybrid Frontend + Python Serverless Setup Guide
+# Next.js Frontend + Railway Python Backend SaaS Setup Guide
 
 ## Project Overview
-Build a single-user SaaS application using Next.js frontend with Python serverless functions, deployed entirely on Vercel. Features Supabase auth/database and AI-driven sales opportunity detection between sent emails and Pipedrive CRM.
+Build a single-user SaaS application using Next.js frontend with Python FastAPI backend deployed on Railway, integrated with Supabase for auth/database. Features AI-driven sales opportunity detection between sent emails and Pipedrive CRM.
 
 ## Architecture Stack
-- **Frontend**: Next.js, TypeScript, Tailwind CSS, Shadcn/ui components
-- **Backend**: Python serverless functions (Vercel)
+- **Frontend**: Next.js, TypeScript, Tailwind CSS, Shadcn/ui components (deployed on Vercel)
+- **Backend**: Python FastAPI application (deployed on Railway)
 - **Database & Auth**: Supabase
 - **Integrations**: Pipedrive CRM, Microsoft Outlook
 - **AI**: LLM API for sales opportunity detection
-- **Deployment**: Vercel (unified frontend + backend)
+- **Deployment**: Vercel (frontend) + Railway (backend)
 - **Triggers**: Webhook-driven when user sends emails
 - **Real-time**: Supabase subscriptions for live dashboard updates
 
 ## Project Structure
-## Benefits of This Architecture
+```
 /my-saas-app
 ├── src/                              # Next.js frontend
 │   ├── app/                         # App router (Next.js 14)
@@ -30,44 +30,47 @@ Build a single-user SaaS application using Next.js frontend with Python serverle
 │   │   └── agents/                  # Agent status/logs components
 │   ├── lib/                         # Frontend utilities
 │   │   ├── supabase.ts             # Supabase client
-│   │   ├── api.ts                  # API client for Python functions
+│   │   ├── api.ts                  # API client for Railway backend
 │   │   ├── utils.ts                # General utilities
 │   │   └── types.ts                # Shared TypeScript types
 │   ├── hooks/                       # Custom React hooks
 │   └── styles/                      # Tailwind CSS
-├── api/                             # Python serverless functions
-│   ├── requirements.txt             # Python dependencies
-│   ├── lib/                         # Shared Python utilities
-│   │   ├── supabase_client.py      # Supabase Python client
-│   │   ├── oauth_manager.py        # OAuth token management
-│   │   ├── encryption.py           # Token encryption/decryption
-│   │   ├── llm_client.py           # LLM API integration
-│   │   └── models.py               # Pydantic models
-│   ├── webhooks/                    # Webhook handlers
-│   │   └── outlook.py              # Outlook sent email webhook
-│   ├── oauth/                       # OAuth flow handlers
-│   │   ├── pipedrive.py            # Pipedrive OAuth callback
-│   │   └── outlook.py              # Outlook OAuth callback
-│   ├── agents/                      # AI agent processing functions
-│   │   ├── analyze_email.py        # AI sales opportunity analysis
-│   │   ├── check_deal_exists.py    # Check if deal exists in Pipedrive
-│   │   └── create_deal.py          # Create new deal in Pipedrive
-│   └── integrations/                # Integration management
-│       ├── connect.py              # Start OAuth flows
-│       ├── status.py               # Check connection status
-│       └── disconnect.py           # Revoke connections
-├── supabase/                        # Database migrations
-│   ├── migrations/                  # SQL migration files
-│   │   ├── 001_initial_schema.sql  # Initial database setup
-│   │   ├── 002_add_indexes.sql     # Performance indexes
+├── backend/                         # Python FastAPI backend
+│   ├── app/                        # FastAPI application
+│   │   ├── main.py                # FastAPI app entry point
+│   │   ├── lib/                   # Shared Python utilities
+│   │   │   ├── supabase_client.py # Supabase Python client
+│   │   │   ├── oauth_manager.py   # OAuth token management
+│   │   │   ├── encryption.py      # Token encryption/decryption
+│   │   │   ├── llm_client.py      # LLM API integration
+│   │   │   └── models.py          # Pydantic models
+│   │   ├── webhooks/              # Webhook handlers
+│   │   │   └── outlook.py         # Outlook sent email webhook
+│   │   ├── oauth/                 # OAuth flow handlers
+│   │   │   ├── pipedrive.py       # Pipedrive OAuth callback
+│   │   │   └── outlook.py         # Outlook OAuth callback
+│   │   ├── agents/                # AI agent processing functions
+│   │   │   ├── analyze_email.py   # AI sales opportunity analysis
+│   │   │   ├── check_deal_exists.py # Check if deal exists in Pipedrive
+│   │   │   └── create_deal.py     # Create new deal in Pipedrive
+│   │   └── integrations/          # Integration management
+│   │       ├── connect.py         # Start OAuth flows
+│   │       ├── status.py          # Check connection status
+│   │       └── disconnect.py      # Revoke connections
+│   ├── requirements.txt           # Python dependencies
+│   ├── Dockerfile                 # Docker configuration for Railway
+│   └── .dockerignore              # Docker ignore file
+├── supabase/                       # Database migrations
+│   ├── migrations/                 # SQL migration files
+│   │   ├── 001_initial_schema.sql # Initial database setup
+│   │   ├── 002_add_indexes.sql    # Performance indexes
 │   │   └── 003_add_constraints.sql # Additional constraints
-│   └── config.toml                 # Supabase configuration
-├── package.json                     # Frontend dependencies
-├── requirements.txt                 # Root Python dependencies (same as api/)
-├── tailwind.config.js              # Tailwind configuration
-├── components.json                  # Shadcn/ui configuration
-├── next.config.js                  # Next.js configuration
-├── vercel.json                     # Vercel deployment config
+│   └── config.toml                # Supabase configuration
+├── package.json                    # Frontend dependencies
+├── tailwind.config.js             # Tailwind configuration
+├── components.json                 # Shadcn/ui configuration
+├── next.config.js                 # Next.js configuration
+├── vercel.json                    # Vercel deployment config (frontend only)
 └── README.md
 ```
 
@@ -172,8 +175,12 @@ CREATE INDEX idx_activity_logs_created_at ON activity_logs(created_at DESC);
 }
 ```
 
-### Python Dependencies (api/requirements.txt)
+### Backend Dependencies (backend/requirements.txt)
 ```txt
+# FastAPI and web framework
+fastapi
+uvicorn[standard]
+
 # Supabase and database
 supabase
 
@@ -195,6 +202,9 @@ python-dotenv
 
 # Logging and error handling
 structlog
+
+# CORS support
+python-multipart
 ```
 
 ## Real-time Dashboard Updates
@@ -244,19 +254,19 @@ export function useRealtimeLogs(userId: string) {
 ```
 1. User sends email in Outlook
    ↓
-2. Microsoft sends webhook to /api/webhooks/outlook (sent email event)
+2. Microsoft sends webhook to Railway backend /webhooks/outlook (sent email event)
    ↓
 3. Webhook extracts email data (recipient, subject, snippet)
    ↓
-4. Calls /api/agents/analyze_email with email content
+4. Calls /agents/analyze_email with email content
    ↓
 5. OpenAI analyzes email content for sales opportunity
    ↓
-6. If opportunity detected → calls /api/agents/check_deal_exists
+6. If opportunity detected → calls /agents/check_deal_exists
    ↓
 7. Searches Pipedrive for existing deal with this contact
    ↓
-8. If no deal exists → calls /api/agents/create_deal
+8. If no deal exists → calls /agents/create_deal
    ↓
 9. Creates new deal in Pipedrive with extracted info
    ↓
@@ -269,7 +279,7 @@ export function useRealtimeLogs(userId: string) {
 
 #### AI Email Analysis with Error Handling
 ```python
-# api/agents/analyze_email.py
+# backend/app/agents/analyze_email.py
 import openai
 from ..lib.supabase_client import supabase
 from ..lib.error_handler import handle_errors
@@ -280,13 +290,8 @@ import json
 logger = get_logger(__name__)
 
 @handle_errors
-def handler(request):
+async def analyze_email(user_id: str, email_content: str, recipient_email: str):
     """Analyze sent email for sales opportunities using AI"""
-    
-    data = request.json()
-    user_id = data['user_id']
-    email_content = data['email_content']
-    recipient_email = data['recipient_email']
     
     logger.info("Starting email analysis", extra={
         "user_id": user_id,
@@ -373,19 +378,19 @@ def handler(request):
 
 ### Pipedrive OAuth
 ```python
-# api/lib/oauth_manager.py
+# backend/app/lib/oauth_manager.py
 PIPEDRIVE_CONFIG = {
     "auth_url": "https://oauth.pipedrive.com/oauth/authorize",
     "token_url": "https://oauth.pipedrive.com/oauth/token",
     "api_base": "https://api.pipedrive.com/v1",
     "scopes": ["deals:read", "deals:write", "persons:read", "persons:write"],
-    "redirect_uri": f"{os.environ['VERCEL_URL']}/api/oauth/pipedrive"
+    "redirect_uri": f"{os.environ['RAILWAY_STATIC_URL']}/oauth/pipedrive"
 }
 ```
 
 ### Microsoft Outlook OAuth
 ```python
-# api/lib/oauth_manager.py
+# backend/app/lib/oauth_manager.py
 OUTLOOK_CONFIG = {
     "auth_url": "https://login.microsoftonline.com/common/oauth2/v2.0/authorize",
     "token_url": "https://login.microsoftonline.com/common/oauth2/v2.0/token",
@@ -395,12 +400,40 @@ OUTLOOK_CONFIG = {
         "https://graph.microsoft.com/Mail.ReadWrite",
         "https://graph.microsoft.com/User.Read"
     ],
-    "redirect_uri": f"{os.environ['VERCEL_URL']}/api/oauth/outlook"
+    "redirect_uri": f"{os.environ['RAILWAY_STATIC_URL']}/oauth/outlook"
 }
 ```
 
 ## Environment Configuration
 
+### Frontend Environment Variables (.env.local)
+```bash
+# Supabase
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+
+# Railway Backend
+NEXT_PUBLIC_RAILWAY_API_URL=https://your-app.railway.app
+```
+
+### Backend Environment Variables (Railway)
+```bash
+# Supabase
+SUPABASE_URL=your_supabase_url
+SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
+
+# OAuth Providers
+PIPEDRIVE_CLIENT_ID=your_pipedrive_client_id
+PIPEDRIVE_CLIENT_SECRET=your_pipedrive_client_secret
+OUTLOOK_CLIENT_ID=your_outlook_client_id
+OUTLOOK_CLIENT_SECRET=your_outlook_client_secret
+
+# OpenAI
+OPENAI_API_KEY=your_openai_api_key
+
+# Railway
+RAILWAY_STATIC_URL=https://your-app.railway.app
+```
 
 ## Development Workflow
 
@@ -417,10 +450,12 @@ npx shadcn-ui@latest add button card form input label select switch tabs toast a
 # 3. Install frontend dependencies
 npm install @supabase/supabase-js axios react-hook-form @hookform/resolvers zod
 
-# 4. Set up Python environment (for local development)
+# 4. Set up backend with FastAPI
+mkdir backend
+cd backend
 python -m venv venv
 source venv/bin/activate  # or venv\Scripts\activate on Windows
-pip install -r api/requirements.txt
+pip install -r requirements.txt
 
 # 5. Initialize Supabase with migrations
 npx supabase init
@@ -431,35 +466,42 @@ npx supabase migration up
 
 ### Development Commands
 ```bash
-# Start development (runs both frontend and serverless functions)
-vercel dev
+# Start frontend development
+npm run dev              # Frontend on port 3000
 
-# Alternative: separate terminals
-npm run dev              # Frontend only
-vercel dev --listen 3001 # Functions only
+# Start backend development
+cd backend
+uvicorn app.main:app --reload --port 8000
 
 # Database migrations
 npx supabase migration new migration_name
 npx supabase migration up
 npx supabase db reset    # Reset to latest migration
+
+# Docker for backend (alternative)
+cd backend
+docker build -t my-saas-backend .
+docker run -p 8000:8000 my-saas-backend
 ```
 
 ### OAuth Provider Setup
-1. **Pipedrive Developer Hub**: Create app, set redirect URI to `https://your-vercel-app.vercel.app/api/oauth/pipedrive`
-2. **Microsoft Azure AD**: Register app, set redirect URI to `https://your-vercel-app.vercel.app/api/oauth/outlook`
+1. **Pipedrive Developer Hub**: Create app, set redirect URI to `https://your-app.railway.app/oauth/pipedrive`
+2. **Microsoft Azure AD**: Register app, set redirect URI to `https://your-app.railway.app/oauth/outlook`
 3. **OpenAI**: Get API key from OpenAI platform
 4. Configure Outlook webhook for sent emails (Mail.Send scope)
 
 ### Deployment
 ```bash
-# Deploy to Vercel (automatically deploys frontend + Python functions)
+# Deploy frontend to Vercel
 vercel --prod
 
-# Set environment variables
-vercel env add SUPABASE_URL
-vercel env add PIPEDRIVE_CLIENT_ID
-# ... etc
+# Deploy backend to Railway
+cd backend
+railway login
+railway init
+railway up
 
+# Set environment variables in Railway dashboard
 # Deploy database migrations
 npx supabase db push
 ```
@@ -654,12 +696,13 @@ export function AgentLogs({ userId }: { userId: string }) {
 ```
 
 ## Benefits of This Architecture
-- **Unified Deployment**: Single `vercel deploy` handles everything
-- **Automatic Scaling**: Serverless functions scale with demand
-- **Cost Effective**: Pay only for execution time
+- **Separated Concerns**: Frontend and backend are independently deployable
+- **Better Local Development**: Full backend can run locally with Docker
+- **Scalability**: Railway provides better scaling for Python applications
+- **Cost Effective**: Railway's pricing model is more suitable for Python workloads
 - **Real-time Processing**: Webhook-driven, no polling required
 - **Live Dashboard**: Real-time updates via Supabase subscriptions
 - **Type Safety**: Shared types between frontend and backend
-- **Developer Experience**: Hot reload for both frontend and functions
+- **Developer Experience**: Hot reload for frontend, Docker for backend
 - **Database Versioning**: Proper migration system for schema changes
 - **Error Handling**: Comprehensive logging and error management
