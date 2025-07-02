@@ -1,17 +1,17 @@
 # Multi-stage build for faster deployments
 FROM python:3.11-slim as builder
 
-# Install build dependencies
-RUN apt-get update && apt-get install -y \
-    gcc \
-    && rm -rf /var/lib/apt/lists/*
+# Install build dependencies - TEMPORARY: Removed gcc for testing
+# RUN apt-get update && apt-get install -y \
+#     gcc \
+#     && rm -rf /var/lib/apt/lists/*
 
 # Create virtual environment
 RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
-# Copy and install requirements first (for better caching)
-COPY requirements.txt .
+# Copy and install requirements first (for better caching) - TEMPORARY: Testing without cryptography
+COPY requirements-no-crypto.txt requirements.txt
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
