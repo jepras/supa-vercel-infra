@@ -23,8 +23,7 @@ python-dotenv==1.0.0
 # Logging and error handling
 structlog==23.2.0
 
-# CORS
-python-cors==1.7.0
+# CORS is built into FastAPI
 
 # Development
 pytest==7.4.3
