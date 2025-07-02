@@ -1,0 +1,13 @@
+# Supabase configuration - only needed for local development
+supabase/
+supabase-config-backup/
+
+# Python cache files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Local development files
+.env.local
+.env.*.local 
