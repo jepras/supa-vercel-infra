@@ -5,12 +5,16 @@ import { ThemeProvider } from '@/components/theme-provider'
 import { AuthProvider } from '@/components/auth-provider'
 import { logEnvironmentStatus } from '@/lib/env-validation'
 import { getAppTitle } from '@/lib/utils'
+import { ReactNode } from 'react'
 
 const inter = Inter({ subsets: ['latin'] })
 
-export const metadata: Metadata = {
-  title: getAppTitle(),
-  description: 'AI-driven sales opportunity detection between sent emails and Pipedrive CRM',
+export async function generateMetadata() {
+  const isProd = process.env.NODE_ENV === 'production'
+  return {
+    title: isProd ? 'prod ai infra' : 'local ai infra',
+    description: 'AI-driven sales opportunity detection between sent emails and Pipedrive CRM',
+  }
 }
 
 // Log environment status on server startup
@@ -21,7 +25,7 @@ if (typeof window === 'undefined') {
 export default function RootLayout({
   children,
 }: {
-  children: React.ReactNode
+  children: ReactNode
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
