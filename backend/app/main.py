@@ -5,6 +5,7 @@ from app.lib.oauth_manager import oauth_manager
 from app.lib.encryption import token_encryption
 from app.lib.supabase_client import supabase_manager
 from app.oauth.pipedrive import router as pipedrive_router
+from app.oauth.microsoft import router as microsoft_router
 
 app = FastAPI()
 
@@ -32,6 +33,7 @@ app.add_middleware(
 
 # Include OAuth routers
 app.include_router(pipedrive_router)
+app.include_router(microsoft_router)
 
 @app.get("/health")
 async def health():
@@ -80,10 +82,18 @@ async def test_oauth_infrastructure():
             "redirect_uri": os.getenv("PIPEDRIVE_REDIRECT_URI", "http://localhost:3000/oauth/pipedrive/callback")
         }
         
+        # Test Microsoft OAuth configuration
+        microsoft_config = {
+            "client_id": bool(os.getenv("MICROSOFT_CLIENT_ID")),
+            "client_secret": bool(os.getenv("MICROSOFT_CLIENT_SECRET")),
+            "redirect_uri": os.getenv("MICROSOFT_REDIRECT_URI", "http://localhost:3000/oauth/microsoft/callback")
+        }
+        
         return {
             "status": "success",
             "oauth_config": oauth_config,
             "pipedrive_config": pipedrive_config,
+            "microsoft_config": microsoft_config,
             "encryption_works": encryption_works,
             "supabase_works": supabase_works,
             "message": "OAuth infrastructure is properly configured"

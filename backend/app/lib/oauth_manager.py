@@ -19,7 +19,7 @@ class OAuthManager:
             "redirect_uri": f"{os.getenv('RAILWAY_STATIC_URL', 'http://localhost:8000')}/oauth/pipedrive/callback"
         }
         
-        self.azure_config = {
+        self.microsoft_config = {
             "auth_url": "https://login.microsoftonline.com/common/oauth2/v2.0/authorize",
             "token_url": "https://login.microsoftonline.com/common/oauth2/v2.0/token",
             "api_base": "https://graph.microsoft.com/v1.0",
@@ -30,15 +30,15 @@ class OAuthManager:
             ],
             "client_id": os.getenv("MICROSOFT_CLIENT_ID"),
             "client_secret": os.getenv("MICROSOFT_CLIENT_SECRET"),
-            "redirect_uri": f"{os.getenv('RAILWAY_STATIC_URL', 'http://localhost:8000')}/oauth/azure/callback"
+            "redirect_uri": f"{os.getenv('RAILWAY_STATIC_URL', 'http://localhost:8000')}/oauth/microsoft/callback"
         }
     
     def generate_auth_url(self, provider: str, state: str) -> str:
         """Generate OAuth authorization URL for the specified provider"""
         if provider == "pipedrive":
             config = self.pipedrive_config
-        elif provider == "azure":
-            config = self.azure_config
+        elif provider == "microsoft":
+            config = self.microsoft_config
         else:
             raise ValueError(f"Unsupported provider: {provider}")
         
@@ -58,8 +58,8 @@ class OAuthManager:
         """Exchange authorization code for access token"""
         if provider == "pipedrive":
             config = self.pipedrive_config
-        elif provider == "azure":
-            config = self.azure_config
+        elif provider == "microsoft":
+            config = self.microsoft_config
         else:
             raise ValueError(f"Unsupported provider: {provider}")
         
@@ -91,10 +91,10 @@ class OAuthManager:
                 "client_secret": bool(self.pipedrive_config["client_secret"]),
                 "redirect_uri": bool(self.pipedrive_config["redirect_uri"])
             },
-            "azure": {
-                "client_id": bool(self.azure_config["client_id"]),
-                "client_secret": bool(self.azure_config["client_secret"]),
-                "redirect_uri": bool(self.azure_config["redirect_uri"])
+            "microsoft": {
+                "client_id": bool(self.microsoft_config["client_id"]),
+                "client_secret": bool(self.microsoft_config["client_secret"]),
+                "redirect_uri": bool(self.microsoft_config["redirect_uri"])
             }
         }
         

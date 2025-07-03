@@ -38,6 +38,7 @@ export default function DashboardPage() {
   const [isConnecting, setIsConnecting] = useState(false)
   const [isTesting, setIsTesting] = useState(false)
   const [connectionStatus, setConnectionStatus] = useState<'unknown' | 'connected' | 'disconnected'>('unknown')
+  const [microsoftConnectionStatus, setMicrosoftConnectionStatus] = useState<'unknown' | 'connected' | 'disconnected'>('unknown')
   const [testResult, setTestResult] = useState<string | null>(null)
   const router = useRouter()
   const { user, isLoading: authLoading, signOut } = useAuth()
@@ -55,6 +56,7 @@ export default function DashboardPage() {
       fetchActivityLogs()
       subscribeToActivityLogs()
       checkConnectionStatus()
+      checkMicrosoftConnectionStatus()
       setIsLoading(false)
     }
   }, [user, authLoading, router])
@@ -140,6 +142,29 @@ export default function DashboardPage() {
     }
   }
 
+  async function handleConnectMicrosoft() {
+    try {
+      setIsConnecting(true)
+      
+      // Get OAuth URL from backend (no auth required for connect)
+      const response = await fetch(`${BACKEND_URL}/api/oauth/microsoft/connect`)
+      
+      if (!response.ok) {
+        throw new Error('Failed to get OAuth URL')
+      }
+      
+      const data = await response.json()
+      
+      // Redirect to Microsoft OAuth
+      window.location.href = data.auth_url
+    } catch (error) {
+      console.error('Error connecting to Microsoft:', error)
+      alert('Failed to connect to Microsoft. Please try again.')
+    } finally {
+      setIsConnecting(false)
+    }
+  }
+
   async function checkConnectionStatus() {
     try {
       // Get session token for authentication
@@ -168,6 +193,37 @@ export default function DashboardPage() {
     } catch (error) {
       console.error('Error checking connection status:', error)
       setConnectionStatus('disconnected')
+    }
+  }
+
+  async function checkMicrosoftConnectionStatus() {
+    try {
+      // Get session token for authentication
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      if (!session?.access_token) {
+        console.error('No session token available for Microsoft status check')
+        setMicrosoftConnectionStatus('disconnected')
+        return
+      }
+      
+      const response = await fetch(`${BACKEND_URL}/api/oauth/microsoft/status`, {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        setMicrosoftConnectionStatus(data.connected ? 'connected' : 'disconnected')
+      } else {
+        console.error('Microsoft status check failed:', response.status)
+        setMicrosoftConnectionStatus('disconnected')
+      }
+    } catch (error) {
+      console.error('Error checking Microsoft connection status:', error)
+      setMicrosoftConnectionStatus('disconnected')
     }
   }
 
@@ -206,6 +262,41 @@ export default function DashboardPage() {
     }
   }
 
+  async function testMicrosoftConnection() {
+    try {
+      setIsTesting(true)
+      setTestResult(null)
+      
+      // Get session token for authentication
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      if (!session?.access_token) {
+        throw new Error('Not authenticated')
+      }
+      
+      const response = await fetch(`${BACKEND_URL}/api/oauth/microsoft/test`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+      })
+      
+      const data = await response.json()
+      
+      if (response.ok) {
+        setTestResult(`✅ ${data.message}\n👤 Name: ${data.user_info.name}\n📧 Email: ${data.user_info.email}\n🆔 ID: ${data.user_info.id}`)
+      } else {
+        setTestResult(`❌ ${data.detail || 'Test failed'}`)
+      }
+    } catch (error) {
+      console.error('Error testing Microsoft connection:', error)
+      setTestResult(`❌ ${error instanceof Error ? error.message : 'Test failed'}`)
+    } finally {
+      setIsTesting(false)
+    }
+  }
+
   async function disconnectIntegration(integrationId: string) {
     try {
       const { error } = await supabase
@@ -225,7 +316,7 @@ export default function DashboardPage() {
     switch (provider) {
       case 'pipedrive':
         return 'Pipedrive'
-      case 'azure':
+      case 'microsoft':
         return 'Microsoft Outlook'
       default:
         return provider
@@ -236,7 +327,7 @@ export default function DashboardPage() {
     switch (provider) {
       case 'pipedrive':
         return 'CRM integration for deal management'
-      case 'azure':
+      case 'microsoft':
         return 'Email automation and webhook processing'
       default:
         return 'Integration'
@@ -300,12 +391,12 @@ export default function DashboardPage() {
                 <CardContent className="space-y-4">
                   <div className="flex items-center gap-2">
                     <Badge 
-                      variant={connectionStatus === 'connected' ? 'default' : 'secondary'}
-                      className={connectionStatus === 'connected' ? 'bg-green-100 text-green-800' : ''}
+                      variant={microsoftConnectionStatus === 'connected' ? 'default' : 'secondary'}
+                      className={microsoftConnectionStatus === 'connected' ? 'bg-green-100 text-green-800' : ''}
                     >
-                      {connectionStatus === 'connected' && <Link className="h-3 w-3 mr-1" />}
-                      {connectionStatus === 'disconnected' && <Unlink className="h-3 w-3 mr-1" />}
-                      {connectionStatus === 'connected' ? 'Connected' : 'Not Connected'}
+                      {microsoftConnectionStatus === 'connected' && <Link className="h-3 w-3 mr-1" />}
+                      {microsoftConnectionStatus === 'disconnected' && <Unlink className="h-3 w-3 mr-1" />}
+                      {microsoftConnectionStatus === 'connected' ? 'Connected' : 'Not Connected'}
                     </Badge>
                   </div>
 
@@ -363,31 +454,82 @@ export default function DashboardPage() {
                 </CardContent>
               </Card>
 
-              {/* Azure Integration */}
+              {/* Microsoft Integration */}
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
                       <span className="text-blue-600 font-bold text-sm">O</span>
                     </div>
-                    Outlook Integration
+                    Microsoft Outlook Integration
                   </CardTitle>
                   <CardDescription>
-                    Connect your Outlook account to monitor emails for sales opportunities
+                    Connect your Microsoft Outlook account to monitor emails for sales opportunities
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="flex items-center gap-2">
-                    <Badge variant="secondary">
-                      <Unlink className="h-3 w-3 mr-1" />
-                      Coming Soon
+                    <Badge 
+                      variant={connectionStatus === 'connected' ? 'default' : 'secondary'}
+                      className={connectionStatus === 'connected' ? 'bg-green-100 text-green-800' : ''}
+                    >
+                      {connectionStatus === 'connected' && <Link className="h-3 w-3 mr-1" />}
+                      {connectionStatus === 'disconnected' && <Unlink className="h-3 w-3 mr-1" />}
+                      {connectionStatus === 'connected' ? 'Connected' : 'Not Connected'}
                     </Badge>
                   </div>
 
-                  <Button disabled variant="outline" className="w-full">
-                    <Unlink className="h-4 w-4 mr-2" />
-                    Connect Outlook
+                  <Button 
+                    onClick={handleConnectMicrosoft}
+                    disabled={isConnecting}
+                    className="w-full"
+                  >
+                    {isConnecting ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Connecting...
+                      </>
+                    ) : (
+                      <>
+                        <Link className="h-4 w-4 mr-2" />
+                        Connect Microsoft Outlook
+                      </>
+                    )}
                   </Button>
+
+                  <Button 
+                    onClick={checkMicrosoftConnectionStatus}
+                    variant="outline"
+                    className="w-full"
+                  >
+                    Refresh Status
+                  </Button>
+
+                  {microsoftConnectionStatus === 'connected' && (
+                    <>
+                      <Button 
+                        onClick={testMicrosoftConnection}
+                        disabled={isTesting}
+                        variant="outline"
+                        className="w-full"
+                      >
+                        {isTesting ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Testing...
+                          </>
+                        ) : (
+                          'Test Microsoft Graph API'
+                        )}
+                      </Button>
+                      
+                      {testResult && (
+                        <div className="mt-2 p-3 bg-gray-900 border border-gray-700 rounded-md">
+                          <pre className="text-xs whitespace-pre-wrap text-gray-100">{testResult}</pre>
+                        </div>
+                      )}
+                    </>
+                  )}
                 </CardContent>
               </Card>
             </div>
