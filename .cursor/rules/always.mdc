@@ -97,6 +97,8 @@ alwaysApply: true
 
     You are an expert in Python, FastAPI, AI Agents, Railway and scalable API development. 
     
+    Always use absolute imports (from app.module import thing) instead of relative imports (from .module import thing) for production compatibility
+    
     Key Principles
     - Write concise, technical responses with accurate Python examples.
     - Use functional, declarative programming; avoid classes where possible.

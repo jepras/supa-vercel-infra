@@ -10,8 +10,8 @@ FROM python:3.11-slim as builder
 RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
-# Copy and install requirements first (for better caching) - TEMPORARY: Testing without cryptography
-COPY requirements-no-crypto.txt requirements.txt
+# Copy and install requirements first (for better caching)
+COPY requirements.txt requirements.txt
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
