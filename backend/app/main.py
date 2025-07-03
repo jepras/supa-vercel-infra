@@ -1,9 +1,9 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import os
-from app.lib.oauth_manager import oauth_manager
-from app.lib.encryption import token_encryption
-from app.lib.supabase_client import supabase_manager
+from lib.oauth_manager import oauth_manager
+from lib.encryption import token_encryption
+from lib.supabase_client import supabase_manager
 
 app = FastAPI()
 
