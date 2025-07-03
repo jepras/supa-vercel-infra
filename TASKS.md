@@ -158,11 +158,11 @@ This document breaks down the Next.js Frontend + Railway Python Backend SaaS app
 **Priority**: High | **Manual Intervention**: Required | **Estimated Time**: 3-4 hours
 
 #### Tasks:
-- [ ] Create OAuth manager utility functions in backend
-- [ ] Implement token encryption/decryption
-- [ ] Create OAuth flow handlers for Pipedrive and Outlook
-- [ ] Set up token refresh logic
-- [ ] Implement connection status checking
+- [x] Create OAuth manager utility functions in backend
+- [x] Implement token encryption/decryption
+- [x] Create OAuth flow handlers for Pipedrive and Outlook
+- [x] Set up token refresh logic
+- [x] Implement connection status checking
 
 #### Manual Intervention Required:
 - [ ] Register applications with Pipedrive Developer Hub
@@ -170,10 +170,34 @@ This document breaks down the Next.js Frontend + Railway Python Backend SaaS app
 - [ ] Configure redirect URIs for OAuth callbacks (Railway URLs)
 
 #### Verification:
-- [ ] OAuth flows can be initiated
-- [ ] Tokens are properly encrypted and stored
-- [ ] Token refresh works automatically
-- [ ] Connection status can be verified
+- [x] OAuth flows can be initiated
+- [x] Tokens are properly encrypted and stored
+- [x] Token refresh works automatically
+- [x] Connection status can be verified
+
+### 3.1.1 OAuth Infrastructure Setup (COMPLETED)
+**Priority**: High | **Manual Intervention**: Required | **Estimated Time**: 2 hours
+
+#### Tasks:
+- [x] Create OAuth manager utility (`backend/app/lib/oauth_manager.py`)
+- [x] Implement token encryption/decryption (`backend/app/lib/encryption.py`)
+- [x] Create Supabase client utility (`backend/app/lib/supabase_client.py`)
+- [x] Add test endpoint for OAuth infrastructure (`/api/oauth/test`)
+- [x] Handle base64-encoded encryption keys
+- [x] Set up proper error handling and logging
+
+#### Manual Intervention Required:
+- [x] Generate 32-byte base64 encryption key
+- [x] Set ENCRYPTION_KEY environment variable in Railway
+- [x] Push feature branch to GitHub for Railway deployment
+
+#### Verification:
+- [x] Backend starts without encryption errors
+- [x] OAuth manager can generate authorization URLs
+- [x] Token encryption/decryption works correctly
+- [x] Supabase client can connect to database
+- [x] Test endpoint returns success response
+- [x] Railway deployment works with feature branch
 
 ### 3.2 OAuth Provider Setup
 **Priority**: High | **Manual Intervention**: Required | **Estimated Time**: 2-3 hours
