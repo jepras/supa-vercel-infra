@@ -5,7 +5,7 @@
 ### Prerequisites
 - Node.js 18+ and npm
 - Python 3.9+ and pip
-- Docker (optional, for backend)
+- Docker (required for backend)
 - Git
 
 ### 1. Start Frontend (Next.js)
@@ -18,22 +18,21 @@ npm run dev
 ```
 **Frontend runs on**: http://localhost:3000
 
-### 2. Start Backend (FastAPI)
+### 2. Start Backend (FastAPI, Docker - Recommended)
 ```bash
 # Navigate to backend directory
 cd backend
 
-# Create virtual environment (if not already done)
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+# Build the Docker image (if not already built)
+docker build -t my-saas-backend .
 
-# Install dependencies (if not already done)
-pip install -r requirements.txt
-
-# Start development server
-uvicorn app.main:app --reload --port 8000
+# Start backend using Docker and your .env file
+# (This ensures production-like environment and uses all required env variables)
+docker run --env-file .env -p 8000:8000 my-saas-backend
 ```
 **Backend runs on**: http://localhost:8000
+
+> **Note:** Always use Docker with `--env-file .env` for backend development. This matches production and ensures all environment variables are loaded correctly.
 
 ### 3. Verify Services
 - Frontend: http://localhost:3000 (should show your app)
