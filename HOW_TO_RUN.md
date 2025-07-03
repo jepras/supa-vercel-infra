@@ -137,6 +137,19 @@ npx vercel
 
 **Production Frontend URL**: jepras-supa-vercel-infra.vercel.app
 
+#### Manual Deployment (if automatic deployment fails)
+If automatic deployments are failing, use the force flag to bypass cache issues:
+```bash
+# Force deployment (bypasses cache and deployment issues)
+npx vercel --prod --force
+```
+
+This is useful when:
+- Automatic deployments are stuck
+- Cache issues are preventing deployment
+- Environment variable changes aren't being picked up
+- Build errors persist despite code fixes
+
 ### Backend Deployment (Railway)
 ```bash
 cd backend

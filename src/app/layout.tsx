@@ -4,11 +4,12 @@ import './globals.css'
 import { ThemeProvider } from '@/components/theme-provider'
 import { AuthProvider } from '@/components/auth-provider'
 import { logEnvironmentStatus } from '@/lib/env-validation'
+import { getAppTitle } from '@/lib/utils'
 
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'SaaS App - Sales Opportunity Detection',
+  title: getAppTitle(),
   description: 'AI-driven sales opportunity detection between sent emails and Pipedrive CRM',
 }
 
