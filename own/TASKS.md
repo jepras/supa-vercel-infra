@@ -205,19 +205,19 @@ This document breaks down the Next.js Frontend + Railway Python Backend SaaS app
 #### Tasks:
 - [x] Configure Pipedrive OAuth application
 - [x] Configure Microsoft Outlook OAuth application
-- [x] Set up webhook endpoints for Outlook (Phase 5.1)
+- [x] Set up webhook endpoints for Outlook (Phase 5.2)
 - [x] Test OAuth flows end-to-end
 
 #### Manual Intervention Required:
 - [x] Create Pipedrive app in Developer Hub
 - [x] Create Azure AD app registration
 - [x] Configure app permissions and scopes
-- [x] Set up webhook subscriptions in Microsoft Graph (Phase 5.1)
+- [x] Set up webhook subscriptions in Microsoft Graph (Phase 5.2)
 
 #### Verification:
 - [x] OAuth flows complete successfully
 - [x] Access tokens are obtained and stored
-- [x] Webhook subscriptions are created (Phase 5.1)
+- [x] Webhook subscriptions are created (Phase 5.2)
 - [x] API calls to providers work
 
 ## Phase 4: Frontend Dashboard & UI
@@ -274,50 +274,7 @@ This document breaks down the Next.js Frontend + Railway Python Backend SaaS app
 
 ## Phase 5: Webhooks & AI Processing
 
-### 5.1 Webhook Implementation (Outlook First)
-**Priority**: High | **Manual Intervention**: Required | **Estimated Time**: 3-4 hours
-
-#### Phase 1: Local Development Setup
-- [ ] Install and configure ngrok for local webhook testing
-- [ ] Create webhook endpoint in existing Railway backend (`/api/webhooks/microsoft/email`)
-- [ ] Implement webhook validation and security (Microsoft Graph validation)
-- [ ] Add basic webhook logging and error handling
-- [ ] Test webhook reception locally with ngrok
-
-#### Phase 2: Microsoft Graph Webhook Subscription
-- [ ] Create webhook subscription endpoint (`/api/webhooks/microsoft/subscribe`)
-- [ ] Implement subscription creation with Microsoft Graph API
-- [ ] Add subscription management (list, delete, renew)
-- [ ] Handle subscription expiration and renewal logic
-
-#### Phase 3: Email Processing Pipeline
-- [ ] Extract email data from webhook payload
-- [ ] Store email metadata in Supabase (`emails` table)
-- [ ] Implement email content retrieval from Microsoft Graph
-- [ ] Add email processing status tracking
-- [ ] Create email processing error handling
-
-#### Phase 4: Production Deployment
-- [ ] Deploy webhook endpoint to Railway
-- [ ] Update Microsoft webhook subscription to production URL
-- [ ] Test webhook delivery in production environment
-- [ ] Monitor webhook reliability and performance
-
-#### Manual Intervention Required:
-- [ ] Install ngrok for local development
-- [ ] Configure Microsoft Graph webhook permissions in Azure AD
-- [ ] Set up webhook subscription with Microsoft Graph
-- [ ] Update webhook endpoint URL in Microsoft Graph (Railway URL)
-
-#### Verification:
-- [ ] Webhooks are received correctly (local and production)
-- [ ] Webhook validation and security work properly
-- [ ] Email data is extracted and stored correctly
-- [ ] Webhook subscription management works
-- [ ] Error handling and logging function properly
-- [ ] Production webhook delivery is reliable
-
-### 5.1.1 Database Schema for Email Processing
+### 5.1 Database Schema for Email Processing
 **Priority**: High | **Manual Intervention**: None | **Estimated Time**: 30 minutes
 
 #### Tasks:
@@ -370,7 +327,50 @@ CREATE TABLE webhook_subscriptions (
 - [ ] Indexes improve query performance
 - [ ] Migrations can be applied and rolled back
 
-### 5.2 AI Email Analysis Implementation
+### 5.2 Webhook Implementation (Outlook First)
+**Priority**: High | **Manual Intervention**: Required | **Estimated Time**: 3-4 hours
+
+#### Phase 1: Local Development Setup
+- [ ] Install and configure ngrok for local webhook testing
+- [ ] Create webhook endpoint in existing Railway backend (`/api/webhooks/microsoft/email`)
+- [ ] Implement webhook validation and security (Microsoft Graph validation)
+- [ ] Add basic webhook logging and error handling
+- [ ] Test webhook reception locally with ngrok
+
+#### Phase 2: Microsoft Graph Webhook Subscription
+- [ ] Create webhook subscription endpoint (`/api/webhooks/microsoft/subscribe`)
+- [ ] Implement subscription creation with Microsoft Graph API
+- [ ] Add subscription management (list, delete, renew)
+- [ ] Handle subscription expiration and renewal logic
+
+#### Phase 3: Email Processing Pipeline
+- [ ] Extract email data from webhook payload
+- [ ] Store email metadata in Supabase (`emails` table)
+- [ ] Implement email content retrieval from Microsoft Graph
+- [ ] Add email processing status tracking
+- [ ] Create email processing error handling
+
+#### Phase 4: Production Deployment
+- [ ] Deploy webhook endpoint to Railway
+- [ ] Update Microsoft webhook subscription to production URL
+- [ ] Test webhook delivery in production environment
+- [ ] Monitor webhook reliability and performance
+
+#### Manual Intervention Required:
+- [ ] Install ngrok for local development
+- [ ] Configure Microsoft Graph webhook permissions in Azure AD
+- [ ] Set up webhook subscription with Microsoft Graph
+- [ ] Update webhook endpoint URL in Microsoft Graph (Railway URL)
+
+#### Verification:
+- [ ] Webhooks are received correctly (local and production)
+- [ ] Webhook validation and security work properly
+- [ ] Email data is extracted and stored correctly
+- [ ] Webhook subscription management works
+- [ ] Error handling and logging function properly
+- [ ] Production webhook delivery is reliable
+
+### 5.3 AI Email Analysis Implementation
 **Priority**: High | **Manual Intervention**: Required | **Estimated Time**: 3-4 hours
 
 #### Tasks:
@@ -393,7 +393,7 @@ CREATE TABLE webhook_subscriptions (
 - [ ] Reasoning is extracted properly
 - [ ] Errors are properly logged and handled
 
-### 5.3 Pipedrive Integration
+### 5.4 Pipedrive Integration
 **Priority**: High | **Manual Intervention**: None | **Estimated Time**: 2-3 hours
 
 #### Tasks:
