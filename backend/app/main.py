@@ -4,6 +4,7 @@ import os
 from lib.oauth_manager import oauth_manager
 from lib.encryption import token_encryption
 from lib.supabase_client import supabase_manager
+from oauth.pipedrive import router as pipedrive_router
 
 app = FastAPI()
 
@@ -27,6 +28,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Include OAuth routers
+app.include_router(pipedrive_router)
 
 @app.get("/health")
 async def health():
@@ -68,9 +72,17 @@ async def test_oauth_infrastructure():
         # Test Supabase connection
         supabase_works = True  # Will be tested when we actually use it
         
+        # Test Pipedrive OAuth configuration
+        pipedrive_config = {
+            "client_id": bool(os.getenv("PIPEDRIVE_CLIENT_ID")),
+            "client_secret": bool(os.getenv("PIPEDRIVE_CLIENT_SECRET")),
+            "redirect_uri": os.getenv("PIPEDRIVE_REDIRECT_URI", "http://localhost:3000/oauth/pipedrive/callback")
+        }
+        
         return {
             "status": "success",
             "oauth_config": oauth_config,
+            "pipedrive_config": pipedrive_config,
             "encryption_works": encryption_works,
             "supabase_works": supabase_works,
             "message": "OAuth infrastructure is properly configured"

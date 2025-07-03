@@ -99,6 +99,10 @@ class OAuthManager:
         }
         
         return validation
+    
+    def generate_state(self) -> str:
+        """Generate a secure random state parameter for OAuth"""
+        return secrets.token_urlsafe(32)
 
 # Create global instance
 oauth_manager = OAuthManager() 
