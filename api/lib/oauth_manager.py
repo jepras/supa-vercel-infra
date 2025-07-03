@@ -186,7 +186,7 @@ class OAuthManager:
     
     async def get_valid_token(self, user_id: str, provider: str) -> Optional[str]:
         """Get a valid access token, refreshing if necessary"""
-        from .supabase_client import supabase
+        from api.lib.supabase_client import supabase
         
         # Get integration record
         result = supabase.table('integrations').select('*').eq('user_id', user_id).eq('provider', provider).single().execute()

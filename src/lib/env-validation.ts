@@ -87,7 +87,7 @@ export function logEnvironmentStatus(): void {
   }
 
   // Show current environment
-  console.log(`\n🌍 Environment: ${process.env.NODE_ENV || 'development'}`)
+  console.log(`\n🌍 Environment: Production`)
   console.log(`🚀 Vercel URL: ${process.env.VERCEL_URL || 'Not deployed'}`)
   
   if (process.env.NEXT_PUBLIC_SUPABASE_URL) {

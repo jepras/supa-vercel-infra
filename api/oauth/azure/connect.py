@@ -4,8 +4,8 @@ import os
 import secrets
 from datetime import datetime
 from urllib.parse import urlencode
-from lib.oauth_manager import oauth_manager
-from lib.supabase_client import supabase_manager
+from api.lib.oauth_manager import oauth_manager
+from api.lib.supabase_client import supabase_manager
 from middleware import apply_middleware
 import logging
 

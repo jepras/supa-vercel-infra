@@ -11,13 +11,9 @@ class TokenEncryption:
     def __init__(self):
         encryption_key = os.getenv("ENCRYPTION_KEY")
         
-        # For development, generate a default key if not provided
+        # Require encryption key in all environments
         if not encryption_key:
-            if os.getenv("NODE_ENV") == "development":
-                logger.warning("ENCRYPTION_KEY not set, using development default key")
-                encryption_key = "dev_encryption_key_32_bytes_long_123"
-            else:
-                raise ValueError("ENCRYPTION_KEY environment variable is required in production")
+            raise ValueError("ENCRYPTION_KEY environment variable is required")
         
         # Handle base64-encoded keys
         try:
@@ -36,12 +32,7 @@ class TokenEncryption:
         
         # Ensure the key is exactly 32 bytes (256 bits)
         if len(self.encryption_key) != 32:
-            if os.getenv("NODE_ENV") == "development":
-                logger.warning("ENCRYPTION_KEY not 32 bytes, padding for development")
-                # Pad or truncate to 32 bytes for development
-                self.encryption_key = self.encryption_key.ljust(32, b'0')[:32]
-            else:
-                raise ValueError("ENCRYPTION_KEY must be exactly 32 bytes")
+            raise ValueError("ENCRYPTION_KEY must be exactly 32 bytes")
     
     def _derive_key(self, salt: bytes) -> bytes:
         """Derive a key from the master key using PBKDF2-like approach"""

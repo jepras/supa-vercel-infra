@@ -2,11 +2,37 @@
 
 ## Local Development Setup
 
-### Prerequisites
-- Node.js 18+ and npm
-- Python 3.9+ and pip
-- Docker (required for backend)
-- Git
+
+While developing
+Frontend: npm run dev
+Backend: python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+
+Before deploying
+Frontend
+open new terminal
+rm -rf .next
+npm install
+npm run build
+npm start
+
+Backend
+cd backend
+docker build -t test-backend .
+docker run --env-file ../.env -p 8000:8000 test-backend
+
+When deploying
+Frontend
+# Deploy to production
+npx vercel --prod
+# Or deploy to preview
+npx vercel
+
+Backend
+Git commit & push (check branch on Railway is set correct)
+
+Frontend URL: https://supa-vercel-infra.vercel.app/dashboard
+Backend URL: https://supa-vercel-infra-production.up.railway.app
+
 
 ### 1. Start Frontend (Next.js)
 ```bash
@@ -18,21 +44,46 @@ npm run dev
 ```
 **Frontend runs on**: http://localhost:3000
 
-### 2. Start Backend (FastAPI, Docker - Recommended)
+### 2. Start Backend (FastAPI)
+
+#### Development with Uvicorn (Recommended for Development)
+```bash
+# Navigate to backend directory
+cd backend
+
+# Install dependencies (if not already done)
+pip install -r requirements.txt
+
+# Start backend with uvicorn for development (hot reload)
+# Note: Use app.main:app when running from backend/ directory
+python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
+**Backend runs on**: http://localhost:8000
+
+#### Production-like Testing with Docker
 ```bash
 # Navigate to backend directory
 cd backend
 
 # Build the Docker image (if not already built)
-docker build -t my-saas-backend .
+docker build -t test-backend .
 
-# Start backend using Docker and your .env file
+# Start backend using Docker and your .env file from the root directory
 # (This ensures production-like environment and uses all required env variables)
-docker run --env-file .env -p 8000:8000 my-saas-backend
+docker run --env-file ../.env -p 8000:8000 test-backend
 ```
-**Backend runs on**: http://localhost:8000
 
-> **Note:** Always use Docker with `--env-file .env` for backend development. This matches production and ensures all environment variables are loaded correctly.
+> **Note:** Use uvicorn for development (faster iteration, hot reload). Use Docker when you want to test production-like environment. Always use `--env-file ../.env` with Docker (since you're in the backend directory but .env is in the root).
+
+### Import and Command Differences
+
+**Local Development (from backend/ directory):**
+- Use `python -m uvicorn app.main:app` (because you're in backend/ and need to reference the app module)
+- Imports work as `from app.lib.oauth_manager import oauth_manager`
+
+**Docker/Production (from /app directory):**
+- Use `python -m uvicorn main:app` (because the app/ directory is copied to the root)
+- Same imports work: `from app.lib.oauth_manager import oauth_manager`
 
 ### 3. Verify Services
 - Frontend: http://localhost:3000 (should show your app)
@@ -48,7 +99,7 @@ NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_production_anon_key
 
 # Backend API
-NEXT_PUBLIC_RAILWAY_API_URL=http://localhost:8000
+NEXT_PUBLIC_BACKEND_URL=http://localhost:8000
 ```
 
 ### Backend (.env)
@@ -77,17 +128,19 @@ RAILWAY_STATIC_URL=http://localhost:8000
 # Terminal 1 - Frontend
 npm run dev
 
-# Terminal 2 - Backend
+# Terminal 2 - Backend (Development)
 cd backend
-uvicorn app.main:app --reload --port 8000
+uvicorn main:app --reload --port 8000
+
+# Terminal 2 - Backend (Production-like testing)
+cd backend
+docker run --env-file ../.env -p 8000:8000 test-backend
 ```
 
-### Docker Alternative for Backend
-```bash
-cd backend
-docker build -t my-saas-backend .
-docker run -p 8000:8000 my-saas-backend
-```
+### Development Workflow Summary
+1. **Start with uvicorn** for fast development iteration
+2. **Test with Docker** when code is working to verify production-like environment
+3. **Deploy to Railway** when everything works locally
 
 ## Testing Before Deployment
 
@@ -104,9 +157,12 @@ npm start
 ```bash
 cd backend
 
-# Test with Docker
+# Test with uvicorn (development)
+uvicorn main:app --reload --port 8000
+
+# Test with Docker (production-like)
 docker build -t my-saas-backend .
-docker run -p 8000:8000 my-saas-backend
+docker run --env-file ../.env -p 8000:8000 my-saas-backend
 
 # Test health endpoint
 curl http://localhost:8000/health

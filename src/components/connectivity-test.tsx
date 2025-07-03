@@ -157,7 +157,7 @@ export function ConnectivityTest() {
               <div>
                 <span className="font-medium">Backend URL:</span>
                 <span className="ml-2 font-mono">
-                  {process.env.NEXT_PUBLIC_BACKEND_URL || process.env.NEXT_PUBLIC_RAILWAY_API_URL || 'http://localhost:8000'}
+                  {process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000'}
                 </span>
               </div>
               <div>

@@ -1,7 +1,7 @@
 // API client for Railway backend communication
 
 // Use environment variable for backend URL
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || process.env.NEXT_PUBLIC_RAILWAY_API_URL || 'http://localhost:8000'
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000'
 
 interface ApiResponse<T = any> {
   data?: T

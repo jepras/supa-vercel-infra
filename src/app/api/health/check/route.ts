@@ -5,13 +5,10 @@ export async function GET(request: NextRequest) {
   try {
     const envStatus = validateEnvironment()
     
-    // Don't expose sensitive data in production
-    const isProduction = process.env.NODE_ENV === 'production'
-    
     const response = {
       status: 'ok',
       timestamp: new Date().toISOString(),
-      environment: process.env.NODE_ENV || 'development',
+      environment: 'production',
       vercelUrl: process.env.VERCEL_URL || null,
       envValidation: {
         isValid: envStatus.isValid,
@@ -21,14 +18,8 @@ export async function GET(request: NextRequest) {
         hasMissingVars: envStatus.missing.length > 0,
         hasWarnings: envStatus.warnings.length > 0
       },
-      // Only show detailed info in development
-      details: isProduction ? null : {
-        missing: envStatus.missing,
-        warnings: envStatus.warnings,
-        supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL ? 'Set' : 'Missing',
-        hasAnonKey: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-        hasServiceKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY
-      }
+      // Don't expose sensitive data in production
+      details: null
     }
 
     return NextResponse.json(response, {

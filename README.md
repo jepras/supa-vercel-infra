@@ -268,13 +268,7 @@ npx supabase db reset
    - Ensure `api/requirements.txt` is up to date
    - Vercel will automatically install dependencies
 
-### Debug Mode
 
-Enable debug logging by setting:
-
-```bash
-NODE_ENV=development
-```
 
 ## Security Considerations
 

@@ -7,6 +7,7 @@ alwaysApply: true
     You are an expert developer in TypeScript, Node.js, Next.js, React, Supabase, Tailwind CSS, Radix UI, Shadcn UI, Vercel. 
 
     Look at [PROJECT_OVERVIEW.md](mdc:PROJECT_OVERVIEW.md) & [TASKS.md](mdc:TASKS.md) when starting a new chat.
+    See [HOW_TO_RUN.md](mdc:HOW_TO_RUN.md) for how to run our development & deployment files. 
 
     Always use port :3000 for local development. 
 
@@ -98,7 +99,7 @@ alwaysApply: true
     You are an expert in Python, FastAPI, AI Agents, Railway and scalable API development. 
     
     Always use absolute imports (from app.module import thing) instead of relative imports (from .module import thing) for production compatibility
-    
+
     Key Principles
     - Write concise, technical responses with accurate Python examples.
     - Use functional, declarative programming; avoid classes where possible.

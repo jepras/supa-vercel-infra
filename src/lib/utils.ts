@@ -6,6 +6,5 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function getAppTitle(): string {
-  const isDevelopment = process.env.NODE_ENV === 'development'
-  return isDevelopment ? 'dev ai infra' : 'prod ai infra'
+  return 'prod ai infra'
 }

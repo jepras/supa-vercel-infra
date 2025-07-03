@@ -1,11 +1,12 @@
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request, Depends
 from fastapi.responses import RedirectResponse
 import os
 from typing import Dict, Any
 import httpx
-from lib.oauth_manager import oauth_manager
-from lib.encryption import token_encryption
-from lib.supabase_client import supabase_manager
+from app.lib.oauth_manager import oauth_manager
+from app.lib.encryption import token_encryption
+from app.lib.supabase_client import supabase_manager
+from app.auth import get_current_user
 
 router = APIRouter(prefix="/api/oauth/pipedrive", tags=["pipedrive-oauth"])
 
@@ -48,17 +49,23 @@ async def connect_pipedrive():
         raise HTTPException(status_code=500, detail=f"Failed to generate OAuth URL: {str(e)}")
 
 @router.post("/callback")
-async def pipedrive_callback(request: Request):
+async def pipedrive_callback(request: Request, current_user: dict = Depends(get_current_user)):
     """Handle Pipedrive OAuth callback and token exchange"""
     try:
-        # Get query parameters
-        params = dict(request.query_params)
-        code = params.get("code")
-        state = params.get("state")
-        error = params.get("error")
+        # Get data from request body (for POST requests from frontend)
+        body = await request.json()
+        code = body.get("code")
+        state = body.get("state")
         
-        if error:
-            raise HTTPException(status_code=400, detail=f"OAuth error: {error}")
+        # Fallback to query parameters (for direct OAuth redirects)
+        if not code:
+            params = dict(request.query_params)
+            code = params.get("code")
+            state = params.get("state")
+            error = params.get("error")
+            
+            if error:
+                raise HTTPException(status_code=400, detail=f"OAuth error: {error}")
         
         if not code:
             raise HTTPException(status_code=400, detail="Authorization code not provided")
@@ -67,7 +74,7 @@ async def pipedrive_callback(request: Request):
         token_data = await exchange_code_for_token(code)
         
         # Store tokens securely
-        await store_pipedrive_tokens(token_data)
+        await store_pipedrive_tokens(token_data, current_user)
         
         return {
             "status": "success",
@@ -78,11 +85,11 @@ async def pipedrive_callback(request: Request):
         raise HTTPException(status_code=500, detail=f"OAuth callback failed: {str(e)}")
 
 @router.get("/status")
-async def pipedrive_status():
+async def pipedrive_status(current_user: dict = Depends(get_current_user)):
     """Check Pipedrive connection status"""
     try:
         # Get stored tokens
-        tokens = await get_pipedrive_tokens()
+        tokens = await get_pipedrive_tokens(current_user)
         
         if not tokens:
             return {
@@ -104,12 +111,49 @@ async def pipedrive_status():
             "message": f"Error checking status: {str(e)}"
         }
 
+@router.post("/test")
+async def test_pipedrive_connection(current_user: dict = Depends(get_current_user)):
+    """Test Pipedrive API connection with stored tokens"""
+    try:
+        # Get stored tokens
+        tokens = await get_pipedrive_tokens(current_user)
+        
+        if not tokens:
+            raise HTTPException(status_code=404, detail="Pipedrive not connected")
+        
+        # Test API call to Pipedrive
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                f"{PIPEDRIVE_API_BASE}/users/me",
+                headers={
+                    "Authorization": f"Bearer {tokens['access_token']}",
+                    "Content-Type": "application/json"
+                }
+            )
+            
+            if response.status_code == 200:
+                user_data = response.json()
+                return {
+                    "status": "success",
+                    "message": "Pipedrive API connection successful",
+                    "user_info": {
+                        "name": user_data.get("data", {}).get("name"),
+                        "email": user_data.get("data", {}).get("email"),
+                        "company": user_data.get("data", {}).get("company_name")
+                    }
+                }
+            else:
+                raise HTTPException(status_code=response.status_code, detail=f"Pipedrive API error: {response.text}")
+                
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Test failed: {str(e)}")
+
 @router.delete("/disconnect")
-async def disconnect_pipedrive():
+async def disconnect_pipedrive(current_user: dict = Depends(get_current_user)):
     """Disconnect Pipedrive integration"""
     try:
         # Remove stored tokens
-        await remove_pipedrive_tokens()
+        await remove_pipedrive_tokens(current_user)
         
         return {
             "status": "success",
@@ -137,7 +181,7 @@ async def exchange_code_for_token(code: str) -> Dict[str, Any]:
         
         return response.json()
 
-async def store_pipedrive_tokens(token_data: Dict[str, Any]):
+async def store_pipedrive_tokens(token_data: Dict[str, Any], current_user: dict):
     """Store Pipedrive tokens securely in database"""
     try:
         # Encrypt tokens before storing
@@ -149,27 +193,29 @@ async def store_pipedrive_tokens(token_data: Dict[str, Any]):
             "provider": "pipedrive",
             "access_token": encrypted_access_token,
             "refresh_token": encrypted_refresh_token,
-            "expires_at": token_data.get("expires_at"),
-            "user_id": token_data.get("user_id"),
-            "scope": token_data.get("scope", ""),
-            "token_type": token_data.get("token_type", "Bearer")
+            "token_expires_at": token_data.get("expires_at"),
+            "user_id": current_user["id"],  # Use authenticated user ID
+            "scopes": [token_data.get("scope", "")] if token_data.get("scope") else [],
+            "metadata": {
+                "token_type": token_data.get("token_type", "Bearer")
+            }
         }
         
         # Insert or update integration record
         result = supabase_manager.client.table("integrations").upsert(
             data,
-            on_conflict="provider"
+            on_conflict="user_id,provider"
         ).execute()
         
         return result
     except Exception as e:
         raise Exception(f"Failed to store tokens: {str(e)}")
 
-async def get_pipedrive_tokens() -> Dict[str, Any]:
+async def get_pipedrive_tokens(current_user: dict) -> Dict[str, Any]:
     """Retrieve and decrypt Pipedrive tokens"""
     try:
         # Get from Supabase
-        result = supabase_manager.client.table("integrations").select("*").eq("provider", "pipedrive").execute()
+        result = supabase_manager.client.table("integrations").select("*").eq("provider", "pipedrive").eq("user_id", current_user["id"]).execute()
         
         if not result.data:
             return None
@@ -183,10 +229,10 @@ async def get_pipedrive_tokens() -> Dict[str, Any]:
         return {
             "access_token": access_token,
             "refresh_token": refresh_token,
-            "expires_at": integration["expires_at"],
+            "expires_at": integration["token_expires_at"],
             "user_id": integration["user_id"],
-            "scope": integration["scope"],
-            "token_type": integration["token_type"]
+            "scope": integration["scopes"][0] if integration["scopes"] else "",
+            "token_type": integration["metadata"].get("token_type", "Bearer")
         }
     except Exception as e:
         raise Exception(f"Failed to retrieve tokens: {str(e)}")
@@ -206,9 +252,10 @@ async def test_pipedrive_connection(tokens: Dict[str, Any]) -> bool:
     except Exception:
         return False
 
-async def remove_pipedrive_tokens():
-    """Remove Pipedrive tokens from database"""
+async def remove_pipedrive_tokens(current_user: dict):
+    """Remove Pipedrive tokens for the current user"""
     try:
-        supabase_manager.client.table("integrations").delete().eq("provider", "pipedrive").execute()
+        result = supabase_manager.client.table("integrations").delete().eq("provider", "pipedrive").eq("user_id", current_user["id"]).execute()
+        return result
     except Exception as e:
         raise Exception(f"Failed to remove tokens: {str(e)}") 

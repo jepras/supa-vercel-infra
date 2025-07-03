@@ -1,16 +1,17 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import os
-from lib.oauth_manager import oauth_manager
-from lib.encryption import token_encryption
-from lib.supabase_client import supabase_manager
-from oauth.pipedrive import router as pipedrive_router
+from app.lib.oauth_manager import oauth_manager
+from app.lib.encryption import token_encryption
+from app.lib.supabase_client import supabase_manager
+from app.oauth.pipedrive import router as pipedrive_router
 
 app = FastAPI()
 
 origins = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
+    "https://supa-vercel-infra.vercel.app",
 ]
 
 # Add production URLs only if set

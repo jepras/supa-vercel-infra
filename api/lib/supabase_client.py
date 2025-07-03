@@ -30,7 +30,7 @@ class SupabaseManager:
     async def save_integration(self, user_id: str, provider: str, token_data: Dict[str, Any], user_info: Optional[Dict[str, Any]] = None) -> bool:
         """Save or update integration data"""
         try:
-            from .oauth_manager import oauth_manager
+            from api.lib.oauth_manager import oauth_manager
             
             integration_data = {
                 'user_id': user_id,

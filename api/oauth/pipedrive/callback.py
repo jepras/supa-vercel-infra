@@ -4,8 +4,8 @@ import os
 import requests
 from datetime import datetime
 from urllib.parse import parse_qs, urlparse
-from lib.oauth_manager import oauth_manager
-from lib.supabase_client import supabase_manager
+from api.lib.oauth_manager import oauth_manager
+from api.lib.supabase_client import supabase_manager
 import logging
 
 logger = logging.getLogger(__name__)

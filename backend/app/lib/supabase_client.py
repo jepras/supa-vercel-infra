@@ -36,7 +36,7 @@ class SupabaseManager:
         """Save OAuth integration to database"""
         try:
             # Encrypt sensitive token data
-            from .encryption import token_encryption
+            from app.lib.encryption import token_encryption
             encrypted_tokens = token_encryption.encrypt_dict(token_data)
             
             integration_data = {
@@ -76,7 +76,7 @@ class SupabaseManager:
             if result.data:
                 integration = result.data[0]
                 # Decrypt tokens
-                from .encryption import token_encryption
+                from app.lib.encryption import token_encryption
                 decrypted_integration = token_encryption.decrypt_dict(integration)
                 return decrypted_integration
             else:
@@ -94,7 +94,7 @@ class SupabaseManager:
             integrations = []
             for integration in result.data:
                 # Decrypt tokens
-                from .encryption import token_encryption
+                from app.lib.encryption import token_encryption
                 decrypted_integration = token_encryption.decrypt_dict(integration)
                 integrations.append(decrypted_integration)
             
