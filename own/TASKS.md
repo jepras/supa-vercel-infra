@@ -205,19 +205,19 @@ This document breaks down the Next.js Frontend + Railway Python Backend SaaS app
 #### Tasks:
 - [x] Configure Pipedrive OAuth application
 - [x] Configure Microsoft Outlook OAuth application
-- [x] Set up webhook endpoints for Outlook (Phase 5.2)
+- [x] Set up webhook endpoints for Outlook (Phase 5.1)
 - [x] Test OAuth flows end-to-end
 
 #### Manual Intervention Required:
 - [x] Create Pipedrive app in Developer Hub
 - [x] Create Azure AD app registration
 - [x] Configure app permissions and scopes
-- [x] Set up webhook subscriptions in Microsoft Graph (Phase 5.2)
+- [x] Set up webhook subscriptions in Microsoft Graph (Phase 5.1)
 
 #### Verification:
 - [x] OAuth flows complete successfully
 - [x] Access tokens are obtained and stored
-- [x] Webhook subscriptions are created (Phase 5.2)
+- [x] Webhook subscriptions are created (Phase 5.1)
 - [x] API calls to providers work
 
 ## Phase 4: Frontend Dashboard & UI
@@ -272,32 +272,9 @@ This document breaks down the Next.js Frontend + Railway Python Backend SaaS app
 - [ ] Live updates function properly
 - [ ] Export functionality works
 
-## Phase 5: AI Processing & Webhooks
+## Phase 5: Webhooks & AI Processing
 
-### 5.1 AI Email Analysis Implementation
-**Priority**: High | **Manual Intervention**: Required | **Estimated Time**: 3-4 hours
-
-#### Tasks:
-- [ ] Create OpenAI integration in backend
-- [ ] Implement email analysis function
-- [ ] Create opportunity detection logic
-- [ ] Implement confidence scoring
-- [ ] Add reasoning extraction
-- [ ] Implement comprehensive error handling
-- [ ] Add structured logging
-
-#### Manual Intervention Required:
-- [ ] Obtain OpenAI API key
-- [ ] Configure OpenAI account and billing
-
-#### Verification:
-- [ ] AI analysis function works
-- [ ] Opportunity detection is accurate
-- [ ] Confidence scores are reasonable
-- [ ] Reasoning is extracted properly
-- [ ] Errors are properly logged and handled
-
-### 5.2 Webhook Implementation (Outlook First)
+### 5.1 Webhook Implementation (Outlook First)
 **Priority**: High | **Manual Intervention**: Required | **Estimated Time**: 3-4 hours
 
 #### Phase 1: Local Development Setup
@@ -340,7 +317,7 @@ This document breaks down the Next.js Frontend + Railway Python Backend SaaS app
 - [ ] Error handling and logging function properly
 - [ ] Production webhook delivery is reliable
 
-### 5.2.1 Database Schema for Email Processing
+### 5.1.1 Database Schema for Email Processing
 **Priority**: High | **Manual Intervention**: None | **Estimated Time**: 30 minutes
 
 #### Tasks:
@@ -392,6 +369,29 @@ CREATE TABLE webhook_subscriptions (
 - [ ] RLS policies work correctly
 - [ ] Indexes improve query performance
 - [ ] Migrations can be applied and rolled back
+
+### 5.2 AI Email Analysis Implementation
+**Priority**: High | **Manual Intervention**: Required | **Estimated Time**: 3-4 hours
+
+#### Tasks:
+- [ ] Create OpenAI integration in backend
+- [ ] Implement email analysis function
+- [ ] Create opportunity detection logic
+- [ ] Implement confidence scoring
+- [ ] Add reasoning extraction
+- [ ] Implement comprehensive error handling
+- [ ] Add structured logging
+
+#### Manual Intervention Required:
+- [ ] Obtain OpenAI API key
+- [ ] Configure OpenAI account and billing
+
+#### Verification:
+- [ ] AI analysis function works
+- [ ] Opportunity detection is accurate
+- [ ] Confidence scores are reasonable
+- [ ] Reasoning is extracted properly
+- [ ] Errors are properly logged and handled
 
 ### 5.3 Pipedrive Integration
 **Priority**: High | **Manual Intervention**: None | **Estimated Time**: 2-3 hours
