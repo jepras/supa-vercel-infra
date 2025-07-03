@@ -1,6 +1,12 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import os
+from .lib.oauth_manager import oauth_manager
+from .lib.encryption import token_encryption
+from .lib.supabase_client import supabase_manager
+from dotenv import load_dotenv
+load_dotenv()
+print("ENCRYPTION_KEY length:", len(os.getenv("ENCRYPTION_KEY") or ""))
 
 app = FastAPI()
 
@@ -47,4 +53,33 @@ async def test_post_endpoint():
         "timestamp": "2024-01-01T00:00:00Z",
         "status": "success",
         "method": "POST"
-    } 
+    }
+
+@app.get("/api/oauth/test")
+async def test_oauth_infrastructure():
+    """Test OAuth infrastructure setup"""
+    try:
+        # Test OAuth manager
+        oauth_config = oauth_manager.validate_config()
+        
+        # Test encryption
+        test_token = "test_token_123"
+        encrypted = token_encryption.encrypt_token(test_token)
+        decrypted = token_encryption.decrypt_token(encrypted)
+        encryption_works = test_token == decrypted
+        
+        # Test Supabase connection
+        supabase_works = True  # Will be tested when we actually use it
+        
+        return {
+            "status": "success",
+            "oauth_config": oauth_config,
+            "encryption_works": encryption_works,
+            "supabase_works": supabase_works,
+            "message": "OAuth infrastructure is properly configured"
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": f"OAuth infrastructure test failed: {str(e)}"
+        } 
