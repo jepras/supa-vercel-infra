@@ -157,15 +157,12 @@ export function ConnectivityTest() {
               <div>
                 <span className="font-medium">Backend URL:</span>
                 <span className="ml-2 font-mono">
-                  {process.env.NODE_ENV === 'development' 
-                    ? 'http://localhost:8000' 
-                    : (process.env.NEXT_PUBLIC_BACKEND_URL || 'https://supa-vercel-infra-production.up.railway.app')
-                  }
+                  {process.env.NEXT_PUBLIC_BACKEND_URL || process.env.NEXT_PUBLIC_RAILWAY_API_URL || 'http://localhost:8000'}
                 </span>
               </div>
               <div>
                 <span className="font-medium">Environment:</span>
-                <span className="ml-2">{process.env.NODE_ENV}</span>
+                <span className="ml-2">Production</span>
               </div>
             </div>
           </CardContent>

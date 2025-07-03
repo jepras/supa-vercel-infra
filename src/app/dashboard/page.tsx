@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/components/auth-provider'
 import { ConnectivityTest } from '@/components/connectivity-test'
+import { Loader2, Link, Unlink } from 'lucide-react'
 
 interface Integration {
   id: string
@@ -28,11 +29,16 @@ interface ActivityLog {
   metadata: any
 }
 
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || process.env.NEXT_PUBLIC_RAILWAY_API_URL || 'http://localhost:8000'
+
 export default function DashboardPage() {
   const [integrations, setIntegrations] = useState<Integration[]>([])
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [isConnecting, setIsConnecting] = useState<string | null>(null)
+  const [isConnecting, setIsConnecting] = useState(false)
+  const [isTesting, setIsTesting] = useState(false)
+  const [connectionStatus, setConnectionStatus] = useState<'unknown' | 'connected' | 'disconnected'>('unknown')
+  const [testResult, setTestResult] = useState<string | null>(null)
   const router = useRouter()
   const { user, isLoading: authLoading, signOut } = useAuth()
 
@@ -48,6 +54,7 @@ export default function DashboardPage() {
       fetchIntegrations()
       fetchActivityLogs()
       subscribeToActivityLogs()
+      checkConnectionStatus()
       setIsLoading(false)
     }
   }, [user, authLoading, router])
@@ -110,57 +117,92 @@ export default function DashboardPage() {
     }
   }
 
-  async function initiateOAuth(provider: string) {
-    if (!user) return
-    
-    setIsConnecting(provider)
+  async function handleConnectPipedrive() {
     try {
-      const response = await fetch(`/api/oauth/${provider}/connect`, {
+      setIsConnecting(true)
+      
+      // Get OAuth URL from backend (no auth required for connect)
+      const response = await fetch(`${BACKEND_URL}/api/oauth/pipedrive/connect`)
+      
+      if (!response.ok) {
+        throw new Error('Failed to get OAuth URL')
+      }
+      
+      const data = await response.json()
+      
+      // Redirect to Pipedrive OAuth
+      window.location.href = data.auth_url
+    } catch (error) {
+      console.error('Error connecting to Pipedrive:', error)
+      alert('Failed to connect to Pipedrive. Please try again.')
+    } finally {
+      setIsConnecting(false)
+    }
+  }
+
+  async function checkConnectionStatus() {
+    try {
+      // Get session token for authentication
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      if (!session?.access_token) {
+        console.error('No session token available for status check')
+        setConnectionStatus('disconnected')
+        return
+      }
+      
+      const response = await fetch(`${BACKEND_URL}/api/oauth/pipedrive/status`, {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        setConnectionStatus(data.connected ? 'connected' : 'disconnected')
+      } else {
+        console.error('Status check failed:', response.status)
+        setConnectionStatus('disconnected')
+      }
+    } catch (error) {
+      console.error('Error checking connection status:', error)
+      setConnectionStatus('disconnected')
+    }
+  }
+
+  async function testPipedriveConnection() {
+    try {
+      setIsTesting(true)
+      setTestResult(null)
+      
+      // Get session token for authentication
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      if (!session?.access_token) {
+        throw new Error('Not authenticated')
+      }
+      
+      const response = await fetch(`${BACKEND_URL}/api/oauth/pipedrive/test`, {
         method: 'POST',
         headers: {
+          'Authorization': `Bearer ${session.access_token}`,
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
-        }
+        },
       })
-
-      if (!response.ok) {
-        throw new Error('Failed to initiate OAuth')
-      }
-
-      const { auth_url } = await response.json()
       
-      // Open OAuth window
-      const oauthWindow = window.open(
-        auth_url,
-        `${provider}_oauth`,
-        'width=500,height=600,scrollbars=yes,resizable=yes'
-      )
-
-      // Listen for OAuth completion
-      const handleMessage = (event: MessageEvent) => {
-        if (event.data.type === 'oauth_success' && event.data.provider === provider) {
-          oauthWindow?.close()
-          window.removeEventListener('message', handleMessage)
-          fetchIntegrations()
-          setIsConnecting(null)
-        }
+      const data = await response.json()
+      
+      if (response.ok) {
+        setTestResult(`✅ ${data.message}\n👤 Name: ${data.user_info.name}\n📧 Email: ${data.user_info.email}\n🏢 Company: ${data.user_info.company}`)
+      } else {
+        setTestResult(`❌ ${data.detail || 'Test failed'}`)
       }
-
-      window.addEventListener('message', handleMessage)
-
-      // Fallback: check if window was closed
-      const checkClosed = setInterval(() => {
-        if (oauthWindow?.closed) {
-          clearInterval(checkClosed)
-          window.removeEventListener('message', handleMessage)
-          fetchIntegrations()
-          setIsConnecting(null)
-        }
-      }, 1000)
-
     } catch (error) {
-      console.error(`Error initiating ${provider} OAuth:`, error)
-      setIsConnecting(null)
+      console.error('Error testing Pipedrive connection:', error)
+      setTestResult(`❌ ${error instanceof Error ? error.message : 'Test failed'}`)
+    } finally {
+      setIsTesting(false)
     }
   }
 
@@ -246,36 +288,77 @@ export default function DashboardPage() {
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <span>Pipedrive</span>
-                    {integrations.find(i => i.provider === 'pipedrive') && (
-                      <Badge variant="secondary">Connected</Badge>
-                    )}
+                    <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center">
+                      <span className="text-orange-600 font-bold text-sm">P</span>
+                    </div>
+                    Pipedrive Integration
                   </CardTitle>
                   <CardDescription>
-                    Connect your Pipedrive CRM to sync deals and contacts
+                    Connect your Pipedrive account to automatically create deals from email opportunities
                   </CardDescription>
                 </CardHeader>
-                <CardContent>
-                  {integrations.find(i => i.provider === 'pipedrive') ? (
-                    <div className="space-y-2">
-                      <p className="text-sm text-muted-foreground">
-                        Connected as: {integrations.find(i => i.provider === 'pipedrive')?.provider_user_email}
-                      </p>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => disconnectIntegration(integrations.find(i => i.provider === 'pipedrive')!.id)}
-                      >
-                        Disconnect
-                      </Button>
-                    </div>
-                  ) : (
-                    <Button
-                      onClick={() => initiateOAuth('pipedrive')}
-                      disabled={isConnecting === 'pipedrive'}
+                <CardContent className="space-y-4">
+                  <div className="flex items-center gap-2">
+                    <Badge 
+                      variant={connectionStatus === 'connected' ? 'default' : 'secondary'}
+                      className={connectionStatus === 'connected' ? 'bg-green-100 text-green-800' : ''}
                     >
-                      {isConnecting === 'pipedrive' ? 'Connecting...' : 'Connect Pipedrive'}
-                    </Button>
+                      {connectionStatus === 'connected' && <Link className="h-3 w-3 mr-1" />}
+                      {connectionStatus === 'disconnected' && <Unlink className="h-3 w-3 mr-1" />}
+                      {connectionStatus === 'connected' ? 'Connected' : 'Not Connected'}
+                    </Badge>
+                  </div>
+
+                  <Button 
+                    onClick={handleConnectPipedrive}
+                    disabled={isConnecting}
+                    className="w-full"
+                  >
+                    {isConnecting ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Connecting...
+                      </>
+                    ) : (
+                      <>
+                        <Link className="h-4 w-4 mr-2" />
+                        Connect Pipedrive
+                      </>
+                    )}
+                  </Button>
+
+                  <Button 
+                    onClick={checkConnectionStatus}
+                    variant="outline"
+                    className="w-full"
+                  >
+                    Refresh Status
+                  </Button>
+
+                  {connectionStatus === 'connected' && (
+                    <>
+                      <Button 
+                        onClick={testPipedriveConnection}
+                        disabled={isTesting}
+                        variant="outline"
+                        className="w-full"
+                      >
+                        {isTesting ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Testing...
+                          </>
+                        ) : (
+                          'Test Pipedrive API'
+                        )}
+                      </Button>
+                      
+                      {testResult && (
+                        <div className="mt-2 p-3 bg-gray-900 border border-gray-700 rounded-md">
+                          <pre className="text-xs whitespace-pre-wrap text-gray-100">{testResult}</pre>
+                        </div>
+                      )}
+                    </>
                   )}
                 </CardContent>
               </Card>
@@ -284,37 +367,27 @@ export default function DashboardPage() {
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <span>Microsoft Outlook</span>
-                    {integrations.find(i => i.provider === 'azure') && (
-                      <Badge variant="secondary">Connected</Badge>
-                    )}
+                    <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                      <span className="text-blue-600 font-bold text-sm">O</span>
+                    </div>
+                    Outlook Integration
                   </CardTitle>
                   <CardDescription>
-                    Connect your Microsoft Outlook for email automation
+                    Connect your Outlook account to monitor emails for sales opportunities
                   </CardDescription>
                 </CardHeader>
-                <CardContent>
-                  {integrations.find(i => i.provider === 'azure') ? (
-                    <div className="space-y-2">
-                      <p className="text-sm text-muted-foreground">
-                        Connected as: {integrations.find(i => i.provider === 'azure')?.provider_user_email}
-                      </p>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => disconnectIntegration(integrations.find(i => i.provider === 'azure')!.id)}
-                      >
-                        Disconnect
-                      </Button>
-                    </div>
-                  ) : (
-                    <Button
-                      onClick={() => initiateOAuth('azure')}
-                      disabled={isConnecting === 'azure'}
-                    >
-                      {isConnecting === 'azure' ? 'Connecting...' : 'Connect Outlook'}
-                    </Button>
-                  )}
+                <CardContent className="space-y-4">
+                  <div className="flex items-center gap-2">
+                    <Badge variant="secondary">
+                      <Unlink className="h-3 w-3 mr-1" />
+                      Coming Soon
+                    </Badge>
+                  </div>
+
+                  <Button disabled variant="outline" className="w-full">
+                    <Unlink className="h-4 w-4 mr-2" />
+                    Connect Outlook
+                  </Button>
                 </CardContent>
               </Card>
             </div>

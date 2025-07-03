@@ -1,17 +1,7 @@
 // API client for Railway backend communication
 
-// Automatically determine backend URL based on environment
-const getBackendUrl = () => {
-  // In development, use localhost
-  if (process.env.NODE_ENV === 'development') {
-    return 'http://localhost:8000'
-  }
-  
-  // In production, use Railway URL
-  return process.env.NEXT_PUBLIC_BACKEND_URL || 'https://supa-vercel-infra-production.up.railway.app'
-}
-
-const BACKEND_URL = getBackendUrl()
+// Use environment variable for backend URL
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || process.env.NEXT_PUBLIC_RAILWAY_API_URL || 'http://localhost:8000'
 
 interface ApiResponse<T = any> {
   data?: T
