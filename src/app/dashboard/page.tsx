@@ -244,26 +244,8 @@ export default function DashboardPage() {
         throw new Error('No session token available')
       }
       
-      // Get ngrok URL from backend (which can access ngrok API)
-      let ngrokUrl = 'https://ef5b-89-23-224-43.ngrok-free.app' // Fallback
-      try {
-        const ngrokResponse = await fetch(`${BACKEND_URL}/api/ngrok/url`, {
-          headers: {
-            'Authorization': `Bearer ${session.access_token}`,
-            'Content-Type': 'application/json',
-          }
-        })
-        if (ngrokResponse.ok) {
-          const ngrokData = await ngrokResponse.json()
-          if (ngrokData.url) {
-            ngrokUrl = ngrokData.url
-          }
-        }
-      } catch (error) {
-        console.warn('Could not get ngrok URL from backend, using fallback:', error)
-      }
-      
-      const notificationUrl = `${ngrokUrl}/api/webhooks/microsoft/email`
+      // Use Railway production URL for webhook notifications
+      const notificationUrl = `${BACKEND_URL}/api/webhooks/microsoft/email`
       
       const response = await fetch(`${BACKEND_URL}/api/webhooks/microsoft/subscribe`, {
         method: 'POST',
