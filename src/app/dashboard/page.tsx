@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/components/auth-provider'
 import { ConnectivityTest } from '@/components/connectivity-test'
-import { Loader2, Link, Unlink } from 'lucide-react'
+import { Loader2, Link, Unlink, Bell, BellOff } from 'lucide-react'
 
 interface Integration {
   id: string
@@ -40,6 +40,9 @@ export default function DashboardPage() {
   const [connectionStatus, setConnectionStatus] = useState<'unknown' | 'connected' | 'disconnected'>('unknown')
   const [microsoftConnectionStatus, setMicrosoftConnectionStatus] = useState<'unknown' | 'connected' | 'disconnected'>('unknown')
   const [testResult, setTestResult] = useState<string | null>(null)
+  const [webhookSubscriptions, setWebhookSubscriptions] = useState<any[]>([])
+  const [isCreatingWebhook, setIsCreatingWebhook] = useState(false)
+  const [webhookStatus, setWebhookStatus] = useState<string | null>(null)
   const router = useRouter()
   const { user, isLoading: authLoading, signOut } = useAuth()
 
@@ -57,6 +60,7 @@ export default function DashboardPage() {
       subscribeToActivityLogs()
       checkConnectionStatus()
       checkMicrosoftConnectionStatus()
+      fetchWebhookSubscriptions()
       setIsLoading(false)
     }
   }, [user, authLoading, router])
@@ -193,6 +197,130 @@ export default function DashboardPage() {
     } catch (error) {
       console.error('Error checking connection status:', error)
       setConnectionStatus('disconnected')
+    }
+  }
+
+  async function fetchWebhookSubscriptions() {
+    if (!user) return
+    
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      if (!session?.access_token) {
+        console.error('No session token available for webhook fetch')
+        return
+      }
+      
+      const response = await fetch(`${BACKEND_URL}/api/webhooks/microsoft/subscriptions/${user.id}`, {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        setWebhookSubscriptions(data.subscriptions || [])
+      } else {
+        console.error('Failed to fetch webhook subscriptions:', response.status)
+        setWebhookSubscriptions([])
+      }
+    } catch (error) {
+      console.error('Error fetching webhook subscriptions:', error)
+      setWebhookSubscriptions([])
+    }
+  }
+
+  async function createWebhookSubscription() {
+    if (!user) return
+    
+    try {
+      setIsCreatingWebhook(true)
+      setWebhookStatus(null)
+      
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      if (!session?.access_token) {
+        throw new Error('No session token available')
+      }
+      
+      // Get ngrok URL from backend (which can access ngrok API)
+      let ngrokUrl = 'https://ef5b-89-23-224-43.ngrok-free.app' // Fallback
+      try {
+        const ngrokResponse = await fetch(`${BACKEND_URL}/api/ngrok/url`, {
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json',
+          }
+        })
+        if (ngrokResponse.ok) {
+          const ngrokData = await ngrokResponse.json()
+          if (ngrokData.url) {
+            ngrokUrl = ngrokData.url
+          }
+        }
+      } catch (error) {
+        console.warn('Could not get ngrok URL from backend, using fallback:', error)
+      }
+      
+      const notificationUrl = `${ngrokUrl}/api/webhooks/microsoft/email`
+      
+      const response = await fetch(`${BACKEND_URL}/api/webhooks/microsoft/subscribe`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          user_id: user.id,
+          notification_url: notificationUrl
+        })
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        setWebhookStatus('✅ Webhook subscription created successfully!')
+        fetchWebhookSubscriptions() // Refresh the list
+      } else {
+        const errorData = await response.json()
+        setWebhookStatus(`❌ Failed to create webhook: ${errorData.detail || response.statusText}`)
+      }
+    } catch (error) {
+      console.error('Error creating webhook subscription:', error)
+      setWebhookStatus(`❌ Error: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    } finally {
+      setIsCreatingWebhook(false)
+    }
+  }
+
+  async function deleteWebhookSubscription(subscriptionId: string) {
+    if (!user) return
+    
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      if (!session?.access_token) {
+        throw new Error('No session token available')
+      }
+      
+      const response = await fetch(`${BACKEND_URL}/api/webhooks/microsoft/subscriptions/${user.id}/${subscriptionId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+      })
+      
+      if (response.ok) {
+        setWebhookStatus('✅ Webhook subscription deleted successfully!')
+        fetchWebhookSubscriptions() // Refresh the list
+      } else {
+        const errorData = await response.json()
+        setWebhookStatus(`❌ Failed to delete webhook: ${errorData.detail || response.statusText}`)
+      }
+    } catch (error) {
+      console.error('Error deleting webhook subscription:', error)
+      setWebhookStatus(`❌ Error: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
   }
 
@@ -528,6 +656,75 @@ export default function DashboardPage() {
                           <pre className="text-xs whitespace-pre-wrap text-gray-100">{testResult}</pre>
                         </div>
                       )}
+
+                      {/* Webhook Subscriptions Section */}
+                      <div className="border-t pt-4 mt-4">
+                        <h4 className="font-medium mb-3">Email Webhooks</h4>
+                        
+                        {webhookSubscriptions.length > 0 ? (
+                          <div className="space-y-2">
+                            {webhookSubscriptions.map((subscription) => (
+                              <div key={subscription.subscription_id} className="flex items-center justify-between p-2 bg-gray-50 rounded-md">
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2">
+                                    <Bell className="h-4 w-4 text-green-600" />
+                                    <span className="text-sm font-medium">Active Webhook</span>
+                                    <Badge variant="outline" className="text-xs">
+                                      {subscription.is_active ? 'Active' : 'Inactive'}
+                                    </Badge>
+                                  </div>
+                                  <p className="text-xs text-muted-foreground mt-1">
+                                    Expires: {new Date(subscription.expiration_date).toLocaleDateString()}
+                                  </p>
+                                </div>
+                                <Button
+                                  onClick={() => deleteWebhookSubscription(subscription.subscription_id)}
+                                  variant="outline"
+                                  size="sm"
+                                  className="text-red-600 hover:text-red-700"
+                                >
+                                  <BellOff className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="text-center py-4">
+                            <BellOff className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+                            <p className="text-sm text-muted-foreground mb-3">
+                              No webhook subscriptions active
+                            </p>
+                            <Button 
+                              onClick={createWebhookSubscription}
+                              disabled={isCreatingWebhook}
+                              size="sm"
+                              className="w-full"
+                            >
+                              {isCreatingWebhook ? (
+                                <>
+                                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                  Creating Webhook...
+                                </>
+                              ) : (
+                                <>
+                                  <Bell className="h-4 w-4 mr-2" />
+                                  Enable Email Webhooks
+                                </>
+                              )}
+                            </Button>
+                          </div>
+                        )}
+
+                        {webhookStatus && (
+                          <div className={`mt-3 p-3 rounded-md text-sm ${
+                            webhookStatus.includes('✅') 
+                              ? 'bg-green-50 text-green-800 border border-green-200' 
+                              : 'bg-red-50 text-red-800 border border-red-200'
+                          }`}>
+                            {webhookStatus}
+                          </div>
+                        )}
+                      </div>
                     </>
                   )}
                 </CardContent>

@@ -1,67 +1,58 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 import os
+import logging
 from app.lib.oauth_manager import oauth_manager
 from app.lib.encryption import token_encryption
 from app.lib.supabase_client import supabase_manager
 from app.oauth.pipedrive import router as pipedrive_router
 from app.oauth.microsoft import router as microsoft_router
 from app.webhooks.microsoft import router as microsoft_webhook_router
+import httpx
+from fastapi import Depends
+from app.auth import get_current_user
 
 app = FastAPI()
 
-origins = [
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-    "https://supa-vercel-infra.vercel.app",
-]
-
-# Add production URLs only if set
-frontend_url = os.getenv("FRONTEND_URL")
-vercel_url = os.getenv("VERCEL_URL")
-if frontend_url:
-    origins.append(frontend_url)
-if vercel_url:
-    origins.append(vercel_url)
-
+# Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=["http://localhost:3000", "https://your-frontend-domain.vercel.app"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Include OAuth routers
+# Include routers
 app.include_router(pipedrive_router)
 app.include_router(microsoft_router)
-
-# Include webhook routers
 app.include_router(microsoft_webhook_router)
 
-@app.get("/health")
-async def health():
-    return {"status": "ok"}
+@app.get("/")
+async def root():
+    return {"message": "Supa-Vercel-Infra Backend API"}
 
-@app.get("/api/test")
-async def test_endpoint():
-    """Test endpoint for frontend connectivity verification"""
-    return {
-        "message": "Backend is accessible!",
-        "timestamp": "2024-01-01T00:00:00Z",
-        "status": "success",
-        "environment": os.getenv("ENVIRONMENT", "development")
-    }
+@app.get("/api/health")
+async def health_check():
+    return {"status": "healthy", "message": "Backend is running"}
 
-@app.post("/api/test")
-async def test_post_endpoint():
-    """Test POST endpoint for frontend connectivity verification"""
-    return {
-        "message": "POST request received by backend!",
-        "timestamp": "2024-01-01T00:00:00Z",
-        "status": "success",
-        "method": "POST"
-    }
+@app.get("/api/ngrok/url")
+async def get_ngrok_url():
+    """Get the current ngrok URL for webhook testing"""
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get("http://localhost:4040/api/tunnels")
+            if response.status_code == 200:
+                tunnels = response.json()
+                for tunnel in tunnels.get("tunnels", []):
+                    if tunnel.get("proto") == "https":
+                        return {"ngrok_url": tunnel.get("public_url")}
+                return {"error": "No HTTPS tunnel found"}
+            else:
+                return {"error": "Failed to get ngrok tunnels"}
+    except Exception as e:
+        return {"error": f"Failed to connect to ngrok: {str(e)}"}
 
 @app.get("/api/oauth/test")
 async def test_oauth_infrastructure():

@@ -48,21 +48,29 @@ class WebhookValidator:
     def validate_webhook_payload(self, webhook_data: Dict[str, Any]) -> bool:
         """Validate webhook payload structure"""
         try:
-            # Check for required fields
-            required_fields = ["value", "subscriptionId", "clientState"]
-            
-            for field in required_fields:
-                if field not in webhook_data:
-                    logger.warning(f"Missing required field in webhook payload: {field}")
-                    return False
-            
-            # Validate value is a list
-            if not isinstance(webhook_data.get("value"), list):
-                logger.warning("Webhook value field is not a list")
+            # Check for required fields at root level
+            if "value" not in webhook_data:
+                logger.warning("Missing required field in webhook payload: value")
                 return False
             
+            # Validate value is a list
+            value_list = webhook_data.get("value")
+            if not isinstance(value_list, list) or len(value_list) == 0:
+                logger.warning("Webhook value field is not a list or is empty")
+                return False
+            
+            # Get the first item in the value array
+            first_item = value_list[0]
+            
+            # Check for required fields in the first item
+            required_fields = ["subscriptionId", "clientState"]
+            for field in required_fields:
+                if field not in first_item:
+                    logger.warning(f"Missing required field in webhook value item: {field}")
+                    return False
+            
             # Validate subscription ID
-            subscription_id = webhook_data.get("subscriptionId")
+            subscription_id = first_item.get("subscriptionId")
             if not subscription_id or not isinstance(subscription_id, str):
                 logger.warning("Invalid subscription ID in webhook payload")
                 return False
@@ -89,7 +97,7 @@ class WebhookValidator:
         try:
             from app.lib.supabase_client import supabase_manager
             
-            result = supabase_manager.supabase.table("webhook_subscriptions").select("*").eq("subscription_id", subscription_id).eq("user_id", user_id).eq("is_active", True).execute()
+            result = supabase_manager.client.table("webhook_subscriptions").select("*").eq("subscription_id", subscription_id).eq("user_id", user_id).eq("is_active", True).execute()
             
             if result.data:
                 logger.info(f"Subscription {subscription_id} validated for user {user_id}")
