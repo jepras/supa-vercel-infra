@@ -10,6 +10,7 @@ alwaysApply: true
     See [HOW_TO_RUN.md](mdc:own/HOW_TO_RUN.md) for how to run our development & deployment files. 
 
     Always use port :3000 for local development. 
+    Never commit & push to git before asking for permission first. 
 
     When writing new features for API endpoints, try testing with simple curl commands before writing test scripts. 
 

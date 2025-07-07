@@ -5,13 +5,13 @@ python-multipart==0.0.6
 
 # Supabase and database
 supabase==2.16.0
-httpx==0.28.1
+httpx>=0.25.0
 requests==2.32.3
 
 # Token encryption (using built-in libraries - no external dependencies)
 
 # OpenAI for sales opportunity analysis
-openai==1.3.7
+openai>=1.12.0
 
 # Pydantic for data models
 pydantic==2.5.0
