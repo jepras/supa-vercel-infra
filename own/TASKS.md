@@ -220,13 +220,6 @@ This document breaks down the Next.js Frontend + Railway Python Backend SaaS app
 - [x] Webhook subscriptions are created (Phase 5.2)
 - [x] API calls to providers work
 
-#### Key Achievements:
-- ✅ Microsoft OAuth integration working with token encryption/decryption
-- ✅ Pipedrive OAuth integration ready for implementation
-- ✅ Token refresh logic implemented
-- ✅ Connection status checking working
-- ✅ Secure token storage with encryption
-
 ## Phase 4: Frontend Dashboard & UI
 
 ### 4.1 Dashboard Layout & Navigation
@@ -298,7 +291,7 @@ This document breaks down the Next.js Frontend + Railway Python Backend SaaS app
 - [x] Indexes improve query performance
 - [x] Migrations can be applied and rolled back
 
-### 5.2 Webhook Implementation (Outlook First) - COMPLETED ✅
+### 5.2 Webhook Implementation (Outlook First)
 **Priority**: High | **Manual Intervention**: Required | **Estimated Time**: 3-4 hours
 
 #### Phase 1: Local Development Setup - COMPLETED ✅
@@ -314,41 +307,32 @@ This document breaks down the Next.js Frontend + Railway Python Backend SaaS app
 - [x] Add subscription management (list, delete, renew)
 - [x] Handle subscription expiration and renewal logic
 
-#### Phase 3: Email Processing Pipeline - COMPLETED ✅
-- [x] Extract email data from webhook payload
-- [x] Store email metadata in Supabase (`emails` table)
-- [x] Implement email content retrieval from Microsoft Graph
-- [x] Add email processing status tracking
-- [x] Create email processing error handling
+#### Phase 3: Email Processing Pipeline
+- [ ] Extract email data from webhook payload
+- [ ] Store email metadata in Supabase (`emails` table)
+- [ ] Implement email content retrieval from Microsoft Graph
+- [ ] Add email processing status tracking
+- [ ] Create email processing error handling
 
-#### Phase 4: Production Deployment - COMPLETED ✅
-- [x] Deploy webhook endpoint to Railway
-- [x] Update Microsoft webhook subscription to production URL
-- [x] Test webhook delivery in production environment
-- [x] Monitor webhook reliability and performance
+#### Phase 4: Production Deployment
+- [ ] Deploy webhook endpoint to Railway
+- [ ] Update Microsoft webhook subscription to production URL
+- [ ] Test webhook delivery in production environment
+- [ ] Monitor webhook reliability and performance
 
-#### Manual Intervention Required - COMPLETED ✅:
-- [x] Install ngrok for local development
-- [x] Configure Microsoft Graph webhook permissions in Azure AD
-- [x] Set up webhook subscription with Microsoft Graph
-- [x] Update webhook endpoint URL in Microsoft Graph (Railway URL)
+#### Manual Intervention Required:
+- [ ] Install ngrok for local development
+- [ ] Configure Microsoft Graph webhook permissions in Azure AD
+- [ ] Set up webhook subscription with Microsoft Graph
+- [ ] Update webhook endpoint URL in Microsoft Graph (Railway URL)
 
-#### Verification - COMPLETED ✅:
-- [x] Webhooks are received correctly (local and production)
-- [x] Webhook validation and security work properly
-- [x] Email data is extracted and stored correctly
-- [x] Webhook subscription management works
-- [x] Error handling and logging function properly
-- [x] Production webhook delivery is reliable
-
-#### Key Achievements:
-- ✅ Microsoft Graph webhook subscription creation working
-- ✅ Webhook validation handling (GET/POST with validationToken)
-- ✅ Email notifications being received and processed
-- ✅ Database storage of email metadata
-- ✅ Proper error handling and logging
-- ✅ 202 Accepted responses to Microsoft Graph
-- ✅ Subscription management (create, list, delete)
+#### Verification:
+- [ ] Webhooks are received correctly (local and production)
+- [ ] Webhook validation and security work properly
+- [ ] Email data is extracted and stored correctly
+- [ ] Webhook subscription management works
+- [ ] Error handling and logging function properly
+- [ ] Production webhook delivery is reliable
 
 ### 5.3 AI Email Analysis Implementation
 **Priority**: High | **Manual Intervention**: Required | **Estimated Time**: 3-4 hours
