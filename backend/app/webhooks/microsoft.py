@@ -114,7 +114,7 @@ class MicrosoftWebhookManager:
             subscription_data = {
                 "changeType": "created",
                 "notificationUrl": notification_url,
-                "resource": "/me/messages",
+                "resource": "/me/mailFolders('sentitems')/messages",  # Only sent emails
                 "expirationDateTime": expiration_date.isoformat() + "Z",
                 "clientState": f"user_{user_id}"  # Include user ID for webhook processing
             }
@@ -153,6 +153,7 @@ class MicrosoftWebhookManager:
                 db_subscription = {
                     "user_id": user_id,
                     "subscription_id": subscription["id"],
+                    "provider": "microsoft",  # Add provider field
                     "resource": subscription["resource"],
                     "change_type": subscription["changeType"],
                     "notification_url": subscription["notificationUrl"],
@@ -184,12 +185,15 @@ class MicrosoftWebhookManager:
     async def delete_webhook_subscription(self, user_id: str, subscription_id: str) -> bool:
         """Delete a webhook subscription"""
         try:
+            # Delete from Microsoft Graph
             access_token = await self.get_access_token(user_id)
             if not access_token:
-                raise HTTPException(status_code=401, detail="No valid Microsoft access token found")
+                logger.error(f"No access token found for user {user_id}")
+                return False
             
             headers = {
-                "Authorization": f"Bearer {access_token}"
+                "Authorization": f"Bearer {access_token}",
+                "Content-Type": "application/json"
             }
             
             async with httpx.AsyncClient() as client:
@@ -199,81 +203,196 @@ class MicrosoftWebhookManager:
                 )
                 
                 if response.status_code == 204:
-                    # Delete from database
-                    supabase_manager.client.table("webhook_subscriptions").delete().eq("subscription_id", subscription_id).execute()
-                    logger.info(f"Deleted webhook subscription {subscription_id} for user {user_id}")
-                    return True
+                    logger.info(f"Deleted subscription {subscription_id} from Microsoft Graph")
                 else:
-                    logger.error(f"Failed to delete webhook subscription: {response.text}")
-                    return False
+                    logger.warning(f"Failed to delete subscription from Microsoft Graph: {response.status_code}")
+            
+            # Delete from database
+            result = supabase_manager.client.table("webhook_subscriptions").delete().eq("subscription_id", subscription_id).eq("user_id", user_id).execute()
+            
+            if result.data:
+                logger.info(f"Deleted subscription {subscription_id} from database")
+                return True
+            else:
+                logger.warning(f"Subscription {subscription_id} not found in database")
+                return False
+                
+        except Exception as e:
+            logger.error(f"Error deleting webhook subscription: {str(e)}")
+            return False
+
+    async def email_exists_in_database(self, user_id: str, microsoft_email_id: str) -> bool:
+        """Check if an email already exists in the database"""
+        try:
+            result = supabase_manager.client.table("emails").select("id").eq("user_id", user_id).eq("microsoft_email_id", microsoft_email_id).execute()
+            return len(result.data) > 0
+        except Exception as e:
+            logger.error(f"Error checking if email exists: {str(e)}")
+            return False
+
+    async def verify_microsoft_user_mapping(self, supabase_user_id: str, microsoft_user_id: str) -> bool:
+        """Verify that the Microsoft user ID matches the stored mapping for the Supabase user"""
+        try:
+            result = supabase_manager.client.table("integrations").select("microsoft_user_id").eq("user_id", supabase_user_id).eq("provider", "microsoft").eq("is_active", True).execute()
+            
+            if not result.data:
+                logger.error(f"No Microsoft integration found for Supabase user {supabase_user_id}")
+                return False
+            
+            stored_microsoft_user_id = result.data[0].get("microsoft_user_id")
+            if not stored_microsoft_user_id:
+                logger.error(f"No Microsoft user ID stored for Supabase user {supabase_user_id}")
+                return False
+            
+            if stored_microsoft_user_id != microsoft_user_id:
+                logger.error(f"Microsoft user ID mismatch: stored={stored_microsoft_user_id}, received={microsoft_user_id}")
+                return False
+            
+            logger.info(f"Microsoft user ID mapping verified: {supabase_user_id} -> {microsoft_user_id}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error verifying Microsoft user mapping: {str(e)}")
+            return False
+
+    async def fetch_email_content(self, supabase_user_id: str, message_id: str, microsoft_user_id: str) -> Optional[Dict[str, Any]]:
+        """Fetch full email content from Microsoft Graph"""
+        try:
+            access_token = await self.get_access_token(supabase_user_id)
+            if not access_token:
+                logger.error(f"No access token found for user {supabase_user_id}")
+                return None
+            
+            headers = {
+                "Authorization": f"Bearer {access_token}",
+                "Content-Type": "application/json"
+            }
+            
+            # Fetch email content from Microsoft Graph using Microsoft user ID
+            url = f"{self.graph_base_url}/users/{microsoft_user_id}/messages/{message_id}"
+            logger.info(f"Fetching email content from: {url}")
+            
+            async with httpx.AsyncClient() as client:
+                response = await client.get(url, headers=headers)
+                
+                if response.status_code == 200:
+                    email_data = response.json()
+                    logger.info(f"Successfully fetched email content for message {message_id}")
+                    return email_data
+                else:
+                    logger.error(f"Failed to fetch email content: {response.status_code} - {response.text}")
+                    return None
                     
         except Exception as e:
-            logger.error(f"Error deleting webhook subscription {subscription_id} for user {user_id}: {str(e)}")
-            return False
+            logger.error(f"Error fetching email content: {str(e)}")
+            return None
     
     async def process_email_webhook(self, webhook_data: Dict[str, Any]) -> Dict[str, Any]:
         """Process email webhook from Microsoft Graph"""
         try:
-            # Extract email data from webhook
+            # Extract notifications from webhook
             value = webhook_data.get("value", [])
             if not value:
-                logger.warning("No email data in webhook payload")
+                logger.warning("No notification data in webhook payload")
                 return {"status": "no_data"}
-            
+
             processed_emails = []
+            skipped_duplicates = []
             
-            for email_data in value:
+            for notification in value:
+                resource = notification.get("resource", "")
+                subscription_id = notification.get("subscriptionId", "")
+                client_state = notification.get("clientState", "")
+                
+                # Parse resource: "Users/{microsoft_user_id}/Messages/{message_id}"
+                microsoft_user_id = None
+                message_id = None
+                parts = resource.split("/")
+                if len(parts) >= 4 and parts[0].lower() == "users" and parts[2].lower() == "messages":
+                    microsoft_user_id = parts[1]
+                    message_id = parts[3]
+                
+                # Extract Supabase user ID from clientState
+                supabase_user_id = None
+                if client_state.startswith("user_"):
+                    supabase_user_id = client_state.replace("user_", "")
+                
+                logger.info(f"Processing notification: microsoft_user_id={microsoft_user_id}, supabase_user_id={supabase_user_id}, message_id={message_id}")
+                
+                if not microsoft_user_id or not message_id or not supabase_user_id:
+                    logger.warning(f"Invalid resource format or client state: resource={resource}, client_state={client_state}")
+                    continue
+                
+                # Check if email already exists in database (use Supabase user ID)
+                if await self.email_exists_in_database(supabase_user_id, message_id):
+                    logger.info(f"Email {message_id} already exists in database, skipping")
+                    skipped_duplicates.append({
+                        "message_id": message_id,
+                        "reason": "already_exists"
+                    })
+                    continue
+                
+                # Verify Microsoft user mapping
+                if not await self.verify_microsoft_user_mapping(supabase_user_id, microsoft_user_id):
+                    logger.error(f"Microsoft user ID mapping verification failed for {message_id}")
+                    continue
+                
+                # Fetch full email content from Microsoft Graph (use Microsoft user ID)
+                email_content = await self.fetch_email_content(supabase_user_id, message_id, microsoft_user_id)
+                if not email_content:
+                    logger.error(f"Failed to fetch email content for {message_id}")
+                    continue
+                
+                # Extract email metadata
+                subject = email_content.get("subject", "")
+                sender_email = email_content.get("from", {}).get("emailAddress", {}).get("address", "")
+                recipient_emails = [r.get("emailAddress", {}).get("address", "") for r in email_content.get("toRecipients", [])]
+                sent_at = email_content.get("sentDateTime")
+                received_at = email_content.get("receivedDateTime")
+                body_content = email_content.get("body", {}).get("content", "")
+                body_content_type = email_content.get("body", {}).get("contentType", "")
+                
+                # Store email metadata in database (use Supabase user ID)
+                email_record = {
+                    "user_id": supabase_user_id,
+                    "microsoft_email_id": message_id,
+                    "subject": subject,
+                    "sender_email": sender_email,
+                    "recipient_emails": recipient_emails,
+                    "sent_at": sent_at,
+                    "received_at": received_at,
+                    "body_content": body_content,
+                    "body_content_type": body_content_type,
+                    "webhook_received_at": datetime.utcnow().isoformat(),
+                    "processing_status": "stored",
+                    "content_retrieved": True,
+                    "ai_analyzed": False,
+                    "opportunity_detected": None
+                }
+                
                 try:
-                    # Extract email metadata
-                    email_id = email_data.get("id")
-                    subject = email_data.get("subject", "")
-                    sender = email_data.get("from", {}).get("emailAddress", {}).get("address", "")
-                    recipient = email_data.get("toRecipients", [{}])[0].get("emailAddress", {}).get("address", "")
-                    sent_at = email_data.get("sentDateTime")
-                    
-                    # Extract user ID from clientState
-                    client_state = webhook_data.get("clientState", "")
-                    user_id = client_state.replace("user_", "") if client_state.startswith("user_") else None
-                    
-                    if not user_id or not email_id:
-                        logger.warning(f"Missing user_id or email_id: user_id={user_id}, email_id={email_id}")
-                        continue
-                    
-                    # Store email metadata in database
-                    email_record = {
-                        "user_id": user_id,
-                        "microsoft_email_id": email_id,
-                        "subject": subject,
-                        "sender_email": sender,
-                        "recipient_email": recipient,
-                        "sent_at": sent_at,
-                        "webhook_received_at": datetime.utcnow().isoformat(),
-                        "processing_status": "pending",
-                        "content_retrieved": False,
-                        "ai_analyzed": False,
-                        "opportunity_detected": None
-                    }
-                    
                     result = supabase_manager.client.table("emails").insert(email_record).execute()
                     
                     if result.data:
                         processed_emails.append({
-                            "email_id": email_id,
+                            "message_id": message_id,
                             "subject": subject,
                             "status": "stored"
                         })
-                        logger.info(f"Stored email {email_id} for user {user_id}")
+                        logger.info(f"Successfully stored email {message_id} for user {supabase_user_id}")
                     else:
-                        logger.error(f"Failed to store email {email_id} for user {user_id}")
+                        logger.error(f"Failed to store email {message_id} in database")
                         
-                except Exception as e:
-                    logger.error(f"Error processing email in webhook: {str(e)}")
+                except Exception as db_error:
+                    logger.error(f"Database error storing email {message_id}: {str(db_error)}")
                     continue
             
             return {
                 "status": "success",
                 "processed_count": len(processed_emails),
-                "emails": processed_emails
+                "skipped_count": len(skipped_duplicates),
+                "processed_emails": processed_emails,
+                "skipped_duplicates": skipped_duplicates
             }
             
         except Exception as e:

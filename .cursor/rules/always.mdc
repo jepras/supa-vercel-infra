@@ -159,6 +159,15 @@ alwaysApply: true
         - Favor asynchronous and non-blocking flows.
         - Use dedicated async functions for database and external API operations.
         - Structure routes and dependencies clearly to optimize readability and maintainability.
+
+    Cursor Migration Safety Rules
+        Never drop tables or columns in migrations unless explicitly requested and reviewed.
+        All schema changes must use ALTER TABLE ... ADD COLUMN ... or similar additive DDL.
+        Destructive migrations (DROP, TRUNCATE, etc.) are only allowed with explicit user approval and a backup.
+        Always use IF NOT EXISTS for new columns, indexes, and constraints where possible.
+        Test all migrations on a staging/dev database before applying to production.
+        Migration files should be small, focused, and easy to review.
+        Back up the database before running any migration that could affect existing data.
     
     Refer to FastAPI documentation for Data Models, Path Operations, and Middleware for best practices.
     

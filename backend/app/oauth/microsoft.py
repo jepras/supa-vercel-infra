@@ -189,6 +189,9 @@ async def store_microsoft_tokens(token_data: Dict[str, Any], current_user: dict)
         encrypted_access_token = token_encryption.encrypt_token(token_data["access_token"])
         encrypted_refresh_token = token_encryption.encrypt_token(token_data.get("refresh_token", ""))
         
+        # Get Microsoft user ID from /me endpoint
+        microsoft_user_id = await get_microsoft_user_id(token_data["access_token"])
+        
         # Store in Supabase
         data = {
             "provider": "microsoft",
@@ -196,6 +199,7 @@ async def store_microsoft_tokens(token_data: Dict[str, Any], current_user: dict)
             "refresh_token": encrypted_refresh_token,
             "token_expires_at": token_data.get("expires_at"),
             "user_id": current_user["id"],  # Use authenticated user ID
+            "microsoft_user_id": microsoft_user_id,  # Store Microsoft user ID
             "scopes": [token_data.get("scope", "")] if token_data.get("scope") else [],
             "metadata": {
                 "token_type": token_data.get("token_type", "Bearer")
@@ -211,6 +215,29 @@ async def store_microsoft_tokens(token_data: Dict[str, Any], current_user: dict)
         return result
     except Exception as e:
         raise Exception(f"Failed to store tokens: {str(e)}")
+
+async def get_microsoft_user_id(access_token: str) -> str:
+    """Get Microsoft user ID from /me endpoint"""
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                f"{MICROSOFT_API_BASE}/me",
+                headers={
+                    "Authorization": f"Bearer {access_token}",
+                    "Content-Type": "application/json"
+                }
+            )
+            
+            if response.status_code == 200:
+                user_data = response.json()
+                microsoft_user_id = user_data.get("id")
+                if not microsoft_user_id:
+                    raise Exception("Microsoft user ID not found in /me response")
+                return microsoft_user_id
+            else:
+                raise Exception(f"Failed to get Microsoft user info: {response.status_code} - {response.text}")
+    except Exception as e:
+        raise Exception(f"Failed to get Microsoft user ID: {str(e)}")
 
 async def get_microsoft_tokens(current_user: dict) -> Dict[str, Any]:
     """Retrieve and decrypt Microsoft tokens"""
