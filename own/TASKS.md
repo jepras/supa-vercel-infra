@@ -278,54 +278,18 @@ This document breaks down the Next.js Frontend + Railway Python Backend SaaS app
 **Priority**: High | **Manual Intervention**: None | **Estimated Time**: 30 minutes
 
 #### Tasks:
-- [ ] Create `emails` table in Supabase for storing email metadata
-- [ ] Create `webhook_subscriptions` table for managing Microsoft Graph subscriptions
-- [ ] Add RLS policies for email data access
-- [ ] Create indexes for email processing queries
-- [ ] Add migration files for new schema
+- [x] Create `emails` table in Supabase for storing email metadata
+- [x] Create `webhook_subscriptions` table for managing Microsoft Graph subscriptions
+- [x] Add RLS policies for email data access
+- [x] Create indexes for email processing queries
+- [x] Add migration files for new schema
 
-#### Database Schema:
-```sql
--- Emails table for storing email metadata
-CREATE TABLE emails (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  microsoft_email_id VARCHAR(255) NOT NULL,
-  subject TEXT,
-  sender_email VARCHAR(255),
-  recipient_email VARCHAR(255),
-  sent_at TIMESTAMP,
-  webhook_received_at TIMESTAMP DEFAULT NOW(),
-  processing_status VARCHAR(50) DEFAULT 'pending', -- pending, processing, completed, failed
-  content_retrieved BOOLEAN DEFAULT false,
-  ai_analyzed BOOLEAN DEFAULT false,
-  opportunity_detected BOOLEAN,
-  created_at TIMESTAMP DEFAULT NOW(),
-  updated_at TIMESTAMP DEFAULT NOW(),
-  UNIQUE(microsoft_email_id)
-);
-
--- Webhook subscriptions table
-CREATE TABLE webhook_subscriptions (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  subscription_id VARCHAR(255) NOT NULL,
-  resource VARCHAR(255) NOT NULL, -- e.g., '/me/messages'
-  change_type VARCHAR(50) NOT NULL, -- e.g., 'created'
-  notification_url TEXT NOT NULL,
-  expiration_date TIMESTAMP NOT NULL,
-  is_active BOOLEAN DEFAULT true,
-  created_at TIMESTAMP DEFAULT NOW(),
-  updated_at TIMESTAMP DEFAULT NOW(),
-  UNIQUE(subscription_id)
-);
-```
 
 #### Verification:
-- [ ] Database tables are created successfully
-- [ ] RLS policies work correctly
-- [ ] Indexes improve query performance
-- [ ] Migrations can be applied and rolled back
+- [x] Database tables are created successfully
+- [x] RLS policies work correctly
+- [x] Indexes improve query performance
+- [x] Migrations can be applied and rolled back
 
 ### 5.2 Webhook Implementation (Outlook First)
 **Priority**: High | **Manual Intervention**: Required | **Estimated Time**: 3-4 hours

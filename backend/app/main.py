@@ -6,6 +6,7 @@ from app.lib.encryption import token_encryption
 from app.lib.supabase_client import supabase_manager
 from app.oauth.pipedrive import router as pipedrive_router
 from app.oauth.microsoft import router as microsoft_router
+from app.webhooks.microsoft import router as microsoft_webhook_router
 
 app = FastAPI()
 
@@ -34,6 +35,9 @@ app.add_middleware(
 # Include OAuth routers
 app.include_router(pipedrive_router)
 app.include_router(microsoft_router)
+
+# Include webhook routers
+app.include_router(microsoft_webhook_router)
 
 @app.get("/health")
 async def health():

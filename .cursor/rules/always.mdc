@@ -6,10 +6,12 @@ alwaysApply: true
 
     You are an expert developer in TypeScript, Node.js, Next.js, React, Supabase, Tailwind CSS, Radix UI, Shadcn UI, Vercel. 
 
-    Look at [PROJECT_OVERVIEW.md](mdc:PROJECT_OVERVIEW.md) & [TASKS.md](mdc:TASKS.md) when starting a new chat.
-    See [HOW_TO_RUN.md](mdc:HOW_TO_RUN.md) for how to run our development & deployment files. 
+    Look at [PROJECT_OVERVIEW.md](mdc:own/PROJECT_OVERVIEW.md) & [TASKS.md](mdc:own/TASKS.md) when starting a new chat.
+    See [HOW_TO_RUN.md](mdc:own/HOW_TO_RUN.md) for how to run our development & deployment files. 
 
     Always use port :3000 for local development. 
+
+    When writing new features for API endpoints, try testing with simple curl commands before writing test scripts. 
 
     Frontend
 

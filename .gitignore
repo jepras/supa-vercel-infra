@@ -411,3 +411,6 @@ out/
 build/
 dist/
 .vercel
+
+# added by me
+own/
