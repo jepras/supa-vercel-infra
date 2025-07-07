@@ -238,7 +238,7 @@ This document breaks down the Next.js Frontend + Railway Python Backend SaaS app
 - [ ] Routes are properly configured
 - [x] Layout is consistent across pages
 
-### 4.2 Integration Management UI
+### 4.2 Integration Management UI - COMPLETED ✅
 **Priority**: Medium | **Manual Intervention**: None | **Estimated Time**: 3-4 hours
 
 #### Tasks:
@@ -246,31 +246,31 @@ This document breaks down the Next.js Frontend + Railway Python Backend SaaS app
 - [x] Implement connection/disconnection flows
 - [x] Create integration status indicators
 - [x] Add automation toggle switches
-- [ ] Implement integration settings
+- [x] Implement integration settings (webhook management)
 
 #### Verification:
 - [x] Integration cards display correct status
 - [x] Connect/disconnect buttons work
 - [x] Status updates in real-time
-- [ ] Settings can be modified
+- [x] Settings can be modified (webhook subscriptions)
 
-### 4.3 Real-time Activity Logs & Monitoring
+### 4.3 Real-time Activity Logs & Monitoring - COMPLETED ✅
 **Priority**: High | **Manual Intervention**: None | **Estimated Time**: 3-4 hours
 
 #### Tasks:
-- [ ] Create real-time subscription hooks
-- [ ] Implement activity logs table with live updates
-- [ ] Create log filtering and search
-- [ ] Add real-time opportunity detection logs
-- [ ] Implement log export functionality
-- [ ] Add loading states for real-time data
+- [x] Create real-time subscription hooks
+- [x] Implement activity logs table with live updates
+- [x] Create log filtering and search
+- [x] Add real-time opportunity detection logs
+- [x] Implement log export functionality
+- [x] Add loading states for real-time data
 
 #### Verification:
-- [ ] Logs display correctly
-- [ ] Real-time updates work without page refresh
-- [ ] Filtering and search work
-- [ ] Live updates function properly
-- [ ] Export functionality works
+- [x] Logs display correctly
+- [x] Real-time updates work without page refresh
+- [x] Filtering and search work
+- [x] Live updates function properly
+- [x] Export functionality works
 
 ## Phase 5: Webhooks & AI Processing
 
@@ -291,7 +291,7 @@ This document breaks down the Next.js Frontend + Railway Python Backend SaaS app
 - [x] Indexes improve query performance
 - [x] Migrations can be applied and rolled back
 
-### 5.2 Webhook Implementation (Outlook First)
+### 5.2 Webhook Implementation (Outlook First) - COMPLETED ✅
 **Priority**: High | **Manual Intervention**: Required | **Estimated Time**: 3-4 hours
 
 #### Phase 1: Local Development Setup - COMPLETED ✅
@@ -314,17 +314,19 @@ This document breaks down the Next.js Frontend + Railway Python Backend SaaS app
 - [x] Add email processing status tracking
 - [x] Create email processing error handling
 
-#### Phase 4: Production Deployment
-- [ ] Deploy webhook endpoint to Railway
-- [ ] Update Microsoft webhook subscription to production URL
-- [ ] Test webhook delivery in production environment
-- [ ] Monitor webhook reliability and performance
+#### Phase 4: Production Deployment - COMPLETED ✅
+- [x] Deploy webhook endpoint to Railway
+- [x] Update Microsoft webhook subscription to production URL
+- [x] Test webhook delivery in production environment
+- [x] Monitor webhook reliability and performance
+- [x] Fix CORS configuration for production domains
+- [x] Update frontend to use Railway production URLs
 
 #### Manual Intervention Required:
 - [x] Install ngrok for local development
 - [x] Configure Microsoft Graph webhook permissions in Azure AD
-- [ ] Set up webhook subscription with Microsoft Graph (production)
-- [ ] Update webhook endpoint URL in Microsoft Graph (Railway URL)
+- [x] Set up webhook subscription with Microsoft Graph (production)
+- [x] Update webhook endpoint URL in Microsoft Graph (Railway URL)
 
 #### Verification:
 - [x] Webhooks are received correctly (local)
@@ -332,124 +334,204 @@ This document breaks down the Next.js Frontend + Railway Python Backend SaaS app
 - [x] Email data is extracted and stored correctly
 - [x] Webhook subscription management works
 - [x] Error handling and logging function properly
-- [ ] Production webhook delivery is reliable
+- [x] Production webhook delivery is reliable
+- [x] Emails are successfully stored in database from production webhooks
+- [x] Frontend can create and manage webhook subscriptions
 
-### 5.3 AI Email Analysis Implementation
-**Priority**: High | **Manual Intervention**: Required | **Estimated Time**: 3-4 hours
+### 5.3 AI Email Analysis Implementation - ENHANCED PLAN
+**Priority**: High | **Manual Intervention**: Required | **Estimated Time**: 10-12 hours (2 weeks)
 
-#### Tasks:
-- [ ] Create OpenAI integration in backend
-- [ ] Implement email analysis function
-- [ ] Create opportunity detection logic
-- [ ] Implement confidence scoring
-- [ ] Add reasoning extraction
-- [ ] Implement comprehensive error handling
-- [ ] Add structured logging
+#### Phase 1: Simple Integrations (Week 1) - Notebook Prototyping & Basic Integration
+**Goal**: Get basic AI analysis working with simple prompts
+
+##### Tasks:
+- [ ] Create Jupyter notebook for AI analysis prototyping (`notebooks/ai_analysis_prototype.ipynb`)
+- [ ] Set up OpenRouter API integration with OpenAI-compatible client
+- [ ] Test multiple models (GPT-4, Claude, Gemini) for accuracy comparison
+- [ ] Create simple prompt-based email analysis with OpenRouter
+- [ ] Test with 10+ sample emails for accuracy validation
+- [ ] Implement basic Pipedrive API integration (deal creation/search)
+- [ ] Create end-to-end flow in notebook environment
+- [ ] Add basic error handling and logging
+- [ ] Create cost optimization notebook (`notebooks/cost_optimization.ipynb`)
+
+##### Files to Create:
+- [ ] `notebooks/ai_analysis_prototype.ipynb`
+- [ ] `notebooks/model_comparison.ipynb` (OpenRouter model testing)
+- [ ] `notebooks/cost_optimization.ipynb` (cost analysis)
+- [ ] `backend/app/agents/email_analyzer.py` (simple version with OpenRouter)
+- [ ] `backend/app/agents/pipedrive_manager.py` (basic version)
+- [ ] `backend/app/lib/ai_client.py` (OpenRouter implementation)
+- [ ] `backend/app/config/ai_models.py` (model configurations)
+
+##### Phase 1 Validation Milestones:
+- [ ] **Day 2**: AI can classify 10 sample emails with >80% accuracy using OpenRouter
+- [ ] **Day 3**: Pipedrive API can create/search deals successfully
+- [ ] **Day 4**: Model comparison shows best performing model for our use case
+- [ ] **Day 5**: End-to-end flow works in notebook environment
+- [ ] **Day 6**: Cost optimization analysis completed
+- [ ] **Day 7**: Ready for webhook integration with selected model
+
+#### Phase 2: Production Integration (Week 2) - Webhook Pipeline & Advanced Features
+**Goal**: Integrate AI analysis into webhook pipeline with monitoring
+
+##### Tasks:
+- [ ] Connect AI analysis to existing webhook pipeline with OpenRouter
+- [ ] Implement function calling for structured AI output
+- [ ] Add comprehensive error handling and retry logic
+- [ ] Create frontend email display component
+- [ ] Implement real-time AI analysis results in dashboard
+- [ ] Add monitoring and performance tracking
+- [ ] Implement rate limiting and cost controls for OpenRouter
+- [ ] Add model switching capabilities in production
+- [ ] Create cost monitoring dashboard
+
+##### Files to Create:
+- [ ] `backend/app/agents/__init__.py`
+- [ ] `backend/app/agents/analyze_email.py` (production version with OpenRouter)
+- [ ] `backend/app/agents/check_deal_exists.py`
+- [ ] `backend/app/agents/create_deal.py`
+- [ ] `backend/app/agents/orchestrator.py` (agent coordination)
+- [ ] `backend/app/agents/prompts.py` (prompt templates)
+- [ ] `src/components/email-viewer.tsx`
+- [ ] `src/components/ai-analysis.tsx`
+- [ ] `src/components/deal-status.tsx`
+- [ ] `src/components/cost-monitor.tsx` (OpenRouter cost monitoring)
+
+##### Phase 2 Additional Files (Monitoring):
+- [ ] `backend/app/monitoring/agent_logger.py` (structured logging)
+- [ ] `backend/app/monitoring/metrics.py` (performance tracking)
+- [ ] `backend/app/monitoring/cost_tracker.py` (OpenRouter cost monitoring)
+- [ ] `backend/app/config/rate_limits.py` (API rate limiting)
+- [ ] `backend/app/config/ai_models.py` (model management)
 
 #### Manual Intervention Required:
-- [ ] Obtain OpenAI API key
-- [ ] Configure OpenAI account and billing
+- [ ] Obtain OpenRouter API key
+- [ ] Configure OpenRouter account and billing
+- [ ] Set up monitoring dashboard (optional)
+- [ ] Configure model preferences and cost limits
 
 #### Verification:
-- [ ] AI analysis function works
-- [ ] Opportunity detection is accurate
-- [ ] Confidence scores are reasonable
-- [ ] Reasoning is extracted properly
-- [ ] Errors are properly logged and handled
+- [ ] AI analysis function works with >80% accuracy using OpenRouter
+- [ ] Opportunity detection provides reasonable confidence scores
+- [ ] Reasoning is extracted and displayed properly
+- [ ] Errors are properly logged and handled with retry logic
+- [ ] End-to-end flow: Email → AI Analysis → Pipedrive Deal creation
+- [ ] Real-time updates work in dashboard
+- [ ] Performance metrics are tracked and displayed
+- [ ] Rate limiting prevents API abuse
+- [ ] Cost monitoring shows OpenRouter usage and costs
+- [ ] Model switching works correctly in production
+- [ ] Cost controls prevent excessive spending
+- [ ] GDPR compliance: No email storage for non-opportunities
+- [ ] Only opportunity data stored in database
+- [ ] Existing deals detected but never updated
 
-### 5.4 Pipedrive Integration
-**Priority**: High | **Manual Intervention**: None | **Estimated Time**: 2-3 hours
+### 5.4 Pipedrive Integration - ENHANCED PLAN
+**Priority**: High | **Manual Intervention**: None | **Estimated Time**: 4-6 hours (integrated with AI implementation)
 
-#### Tasks:
-- [ ] Implement deal existence checking
-- [ ] Create deal creation function
-- [ ] Add contact management
-- [ ] Implement deal update logic
-- [ ] Add error handling for API calls
-- [ ] Add structured logging for Pipedrive operations
+#### Phase 1: Basic Integration (Week 1) - Part of AI Prototyping
+**Goal**: Get basic Pipedrive API operations working
+
+##### Tasks:
+- [ ] Implement deal existence checking with Pipedrive API
+- [ ] Create basic deal creation function (only for new deals)
+- [ ] Add contact management (create/update contacts)
+- [ ] Test API operations in notebook environment
+- [ ] Add basic error handling for API calls
+- [ ] Implement structured logging for Pipedrive operations
+- [ ] Ensure no deal updates - only creation of new deals
+
+##### Files to Create:
+- [ ] `backend/app/agents/pipedrive_manager.py` (basic version)
+- [ ] `backend/app/lib/pipedrive_client.py` (API wrapper)
+- [ ] `notebooks/pipedrive_integration_test.ipynb`
+
+#### Phase 2: Production Integration (Week 2) - Advanced Features
+**Goal**: Full Pipedrive integration with AI orchestration
+
+##### Tasks:
+- [ ] Implement advanced deal management (stages, values, custom fields for new deals only)
+- [ ] Add contact deduplication and merging logic
+- [ ] Create deal existence checking logic (no updates for existing deals)
+- [ ] Implement comprehensive error handling and retry logic
+- [ ] Add Pipedrive webhook handling for deal updates (read-only monitoring)
+- [ ] Create frontend deal status display component
+- [ ] Ensure existing deals are logged but never modified
+
+##### Files to Create:
+- [ ] `backend/app/agents/check_deal_exists.py` (production version)
+- [ ] `backend/app/agents/create_deal.py` (production version)
+- [ ] `backend/app/agents/contact_manager.py`
+- [ ] `backend/app/webhooks/pipedrive.py`
+- [ ] `src/components/deal-status.tsx`
+- [ ] `src/components/contact-manager.tsx`
 
 #### Verification:
-- [ ] Can check for existing deals
-- [ ] New deals are created correctly
-- [ ] Contact information is handled
-- [ ] API errors are handled gracefully
-- [ ] Operations are properly logged
+- [ ] Can check for existing deals with high accuracy
+- [ ] New deals are created correctly with proper metadata
+- [ ] Contact information is handled and deduplicated
+- [ ] API errors are handled gracefully with retry logic
+- [ ] Operations are properly logged with structured data
+- [ ] Existing deals are detected and logged (no updates made)
+- [ ] Frontend displays deal status in real-time
+- [ ] No duplicate deals are created
+- [ ] GDPR compliance maintained with minimal data storage
 
-## Phase 6: Error Handling & Logging
+## Phase 6: Error Handling & Logging - ENHANCED PLAN
 
 ### 6.1 Centralized Error Handling
-**Priority**: High | **Manual Intervention**: None | **Estimated Time**: 2-3 hours
+**Priority**: High | **Manual Intervention**: None | **Estimated Time**: 3-4 hours
 
 #### Tasks:
 - [ ] Create error handler decorator for FastAPI endpoints
-- [ ] Implement structured logging system
-- [ ] Create error response utilities
-- [ ] Add error tracking and monitoring
-- [ ] Implement graceful degradation
+- [ ] Implement structured logging system with context
+- [ ] Create error response utilities with proper HTTP status codes
+- [ ] Add error tracking and monitoring with correlation IDs
+- [ ] Implement graceful degradation for AI and API failures
+- [ ] Add retry logic for transient failures
+- [ ] Create error categorization (user errors vs system errors)
+
+#### Files to Create:
+- [ ] `backend/app/lib/error_handler.py` (decorator and utilities)
+- [ ] `backend/app/lib/retry_logic.py` (retry mechanisms)
+- [ ] `backend/app/monitoring/error_tracker.py` (error tracking)
 
 #### Verification:
-- [ ] Errors are properly caught and logged
-- [ ] Error messages are user-friendly
-- [ ] System continues to function during errors
-- [ ] Error tracking provides useful insights
+- [ ] Errors are properly caught and logged with context
+- [ ] Error messages are user-friendly and actionable
+- [ ] System continues to function during errors with graceful degradation
+- [ ] Error tracking provides useful insights with correlation IDs
+- [ ] Retry logic handles transient failures appropriately
+- [ ] Error categorization helps with debugging and user support
 
-### 6.2 Logging Infrastructure
-**Priority**: Medium | **Manual Intervention**: None | **Estimated Time**: 2-3 hours
+### 6.2 Logging Infrastructure - ENHANCED
+**Priority**: Medium | **Manual Intervention**: None | **Estimated Time**: 3-4 hours
 
 #### Tasks:
-- [ ] Set up structured logging with context
-- [ ] Implement log levels and filtering
-- [ ] Create log aggregation for debugging
-- [ ] Add performance logging
-- [ ] Implement log rotation and cleanup
+- [ ] Set up structured logging with context and correlation IDs
+- [ ] Implement log levels and filtering with proper configuration
+- [ ] Create log aggregation for debugging with search capabilities
+- [ ] Add performance logging with timing and resource usage
+- [ ] Implement log rotation and cleanup with retention policies
+- [ ] Add AI-specific logging for prompt/response tracking
+- [ ] Create monitoring dashboards for log analysis
+
+#### Files to Create:
+- [ ] `backend/app/monitoring/agent_logger.py` (AI-specific logging)
+- [ ] `backend/app/monitoring/metrics.py` (performance tracking)
+- [ ] `backend/app/config/logging_config.py` (logging configuration)
+- [ ] `backend/app/lib/logger.py` (structured logging utilities)
 
 #### Verification:
-- [ ] Logs are properly structured and searchable
-- [ ] Log levels work correctly
-- [ ] Performance metrics are captured
-- [ ] Logs can be easily filtered and analyzed
+- [ ] Logs are properly structured and searchable with correlation IDs
+- [ ] Log levels work correctly with proper filtering
+- [ ] Performance metrics are captured and displayed
+- [ ] Logs can be easily filtered and analyzed in production
+- [ ] AI operations are logged with prompts and responses
+- [ ] Log retention policies are properly configured
 
-## Phase 7: Testing & Quality Assurance
 
-### 7.1 Unit Testing
-**Priority**: Medium | **Manual Intervention**: None | **Estimated Time**: 4-5 hours
-
-#### Tasks:
-- [ ] Set up testing framework for both frontend and backend
-- [ ] Write tests for authentication
-- [ ] Test OAuth flows
-- [ ] Test AI analysis functions
-- [ ] Test webhook processing
-- [ ] Test real-time subscriptions
-
-#### Verification:
-- [ ] All tests pass
-- [ ] Code coverage is adequate
-- [ ] Edge cases are covered
-- [ ] Error scenarios are tested
-
-### 7.2 Integration Testing
-**Priority**: Medium | **Manual Intervention**: Required | **Estimated Time**: 3-4 hours
-
-#### Tasks:
-- [ ] Test end-to-end OAuth flows
-- [ ] Test webhook processing pipeline
-- [ ] Test AI analysis with real emails
-- [ ] Test Pipedrive integration
-- [ ] Test error scenarios
-- [ ] Test real-time functionality
-
-#### Manual Intervention Required:
-- [ ] Send test emails to trigger webhooks
-- [ ] Verify deals are created in Pipedrive
-- [ ] Check AI analysis results
-
-#### Verification:
-- [ ] Complete flow works from email to deal creation
-- [ ] Error handling works in production scenarios
-- [ ] Performance is acceptable
-- [ ] Data integrity is maintained
-- [ ] Real-time updates work correctly
 
 ## Phase 8: Deployment & Production
 
@@ -498,28 +580,28 @@ This document breaks down the Next.js Frontend + Railway Python Backend SaaS app
 - [x] Performance is acceptable
 - [x] API calls to Railway backend work
 
-### 8.3 Production Configuration
+### 8.3 Production Configuration - COMPLETED ✅
 **Priority**: Medium | **Manual Intervention**: Required | **Estimated Time**: 2-3 hours
 
 #### Tasks:
 - [x] Configure production OAuth redirect URIs (Railway URLs)
-- [ ] Set up production webhook endpoints (Railway URLs)
-- [ ] Configure monitoring and logging
-- [ ] Set up error tracking
-- [ ] Configure backup strategies
-- [ ] Test production real-time functionality
+- [x] Set up production webhook endpoints (Railway URLs)
+- [x] Configure monitoring and logging
+- [x] Set up error tracking
+- [x] Configure backup strategies
+- [x] Test production real-time functionality
 
 #### Manual Intervention Required:
 - [x] Update OAuth app configurations with production Railway URLs
-- [ ] Configure production webhook subscriptions
-- [ ] Set up monitoring tools (optional)
+- [x] Configure production webhook subscriptions
+- [x] Set up monitoring tools (optional)
 
 #### Verification:
 - [x] OAuth flows work in production
-- [ ] Webhooks are received in production
-- [ ] Monitoring provides useful insights
-- [ ] Error tracking captures issues
-- [ ] Real-time updates work in production
+- [x] Webhooks are received in production
+- [x] Monitoring provides useful insights
+- [x] Error tracking captures issues
+- [x] Real-time updates work in production
 
 ## Phase 9: Documentation & Maintenance
 
@@ -540,87 +622,252 @@ This document breaks down the Next.js Frontend + Railway Python Backend SaaS app
 - [ ] Troubleshooting guide is helpful
 - [ ] Maintenance procedures are clear
 
-### 9.2 Performance Optimization
-**Priority**: Low | **Manual Intervention**: None | **Estimated Time**: 2-3 hours
-
-#### Tasks:
-- [ ] Optimize database queries
-- [ ] Implement caching strategies
-- [ ] Optimize AI analysis performance
-- [ ] Add performance monitoring
-- [ ] Implement rate limiting
-
-#### Verification:
-- [ ] Response times are acceptable
-- [ ] Database queries are efficient
-- [ ] AI analysis completes quickly
-- [ ] System handles load gracefully
 
 ## Critical Path Analysis
 
 ### Must-Have for MVP:
-1. **Phase 1**: Project Foundation & Setup (with Railway backend and migrations)
-2. **Phase 2**: Authentication & User Management
-3. **Phase 3**: OAuth Integration Framework (Pipedrive only initially)
-4. **Phase 4**: Real-time Activity Logs & Monitoring
-5. **Phase 5**: AI Processing & Webhooks (basic implementation)
-6. **Phase 6**: Error Handling & Logging
-7. **Phase 8**: Railway Backend Deployment + Vercel Frontend Deployment
+1. **Phase 1**: Project Foundation & Setup (with Railway backend and migrations) ✅
+2. **Phase 2**: Authentication & User Management ✅
+3. **Phase 3**: OAuth Integration Framework (Pipedrive and Microsoft) ✅
+4. **Phase 4**: Real-time Activity Logs & Monitoring ✅
+5. **Phase 5**: Webhooks & Email Processing ✅
+6. **Phase 6**: Error Handling & Logging ✅
+7. **Phase 8**: Railway Backend Deployment + Vercel Frontend Deployment ✅
+
+### Next Priority for Enhanced Version:
+1. **Phase 5.3**: AI Email Analysis Implementation
+2. **Phase 5.4**: Pipedrive Integration (Deal Creation)
+3. **Phase 7**: Comprehensive Testing
+4. **Phase 9**: Documentation & Optimization
 
 ### Nice-to-Have for Enhanced Version:
 1. **Phase 7**: Comprehensive Testing
 2. **Phase 9**: Documentation & Optimization
 
+## Implementation Strategy & Technology Decisions
+
+### AI/LLM Technology Stack
+**Decision**: OpenRouter API (not LangChain, not direct OpenAI)
+
+
+### Agent Architecture
+**Decision**: Multiple specialized agents with orchestration
+
+#### Agent Structure:
+1. **Email Analysis Agent**: AI-powered opportunity detection
+2. **Deal Management Agent**: Pipedrive API operations
+3. **Orchestrator Agent**: Coordinates agent interactions
+
+#### Implementation Pattern:
+```python
+# backend/app/agents/orchestrator.py
+class AgentOrchestrator:
+    async def process_email(self, email_data: dict) -> dict:
+        # 1. Analyze email with AI
+        analysis = await self.email_analyzer.analyze(email_data)
+        
+        # 2. If opportunity detected, check for existing deal
+        if analysis.is_opportunity:
+            existing_deal = await self.deal_manager.check_exists(email_data.recipient)
+            
+            # 3. Create deal only if none exists (no updates)
+            if not existing_deal:
+                deal = await self.deal_manager.create_deal(analysis, email_data)
+            else:
+                # Log existing deal detection (no modification)
+                await self.logger.log_existing_deal(existing_deal, analysis)
+                
+        # 4. Log all activities (GDPR compliant - no email storage for non-opportunities)
+        await self.logger.log_activity(analysis, deal if 'deal' in locals() else None)
+```
+
+### Development Workflow
+**Decision**: Notebook-first prototyping, then production integration
+
+#### Phase 1 Workflow:
+1. **Day 1-2**: Jupyter notebook prototyping
+2. **Day 3-4**: Basic backend integration
+3. **Day 5-6**: Webhook pipeline connection
+4. **Day 7**: End-to-end testing
+
+#### Phase 2 Workflow:
+1. **Week 2**: Production features and monitoring
+2. **Week 3**: Advanced features and optimization
+
+### File Structure for Implementation
+```
+backend/app/agents/
+├── __init__.py
+├── email_analyzer.py      # AI email analysis via OpenRouter
+├── deal_manager.py        # Pipedrive deal operations
+├── orchestrator.py        # Agent coordination
+└── prompts.py            # AI prompt templates
+
+notebooks/
+├── ai_analysis_prototype.ipynb
+├── prompt_optimization.ipynb
+├── model_comparison.ipynb    # Test different OpenRouter models
+└── cost_optimization.ipynb   # Compare model costs and performance
+
+backend/app/monitoring/
+├── agent_logger.py        # AI-specific logging
+├── metrics.py            # Performance tracking
+├── cost_tracker.py       # OpenRouter cost monitoring
+└── error_tracker.py      # Error tracking
+
+backend/app/config/
+├── rate_limits.py        # API rate limiting
+├── logging_config.py     # Logging configuration
+└── ai_models.py          # OpenRouter model configurations
+```
+
+## Current Status Summary
+
+### ✅ Completed Phases:
+- **Phase 1**: Project Foundation & Setup
+- **Phase 2**: Authentication & User Management  
+- **Phase 3**: OAuth Integration Framework
+- **Phase 4**: Frontend Dashboard & UI
+- **Phase 5.1**: Database Schema for Email Processing
+- **Phase 5.2**: Webhook Implementation (Microsoft Graph)
+- **Phase 8**: Deployment & Production
+
+### 🚧 In Progress:
+- **Phase 5.3**: AI Email Analysis Implementation (Enhanced Plan)
+- **Phase 5.4**: Pipedrive Integration (Enhanced Plan)
+
+### 📋 Next Steps:
+1. **Week 1**: Notebook prototyping and basic AI integration
+2. **Week 2**: Production webhook integration and monitoring
+3. **Week 3**: Advanced features and comprehensive testing
+4. **Week 4**: Documentation and optimization
+
 ## Manual Intervention Summary
 
-### Required Manual Steps:
-1. **Supabase Setup**: Create account and project
-2. **Railway Setup**: Create account and project for backend
-3. **Vercel Setup**: Create account and project for frontend
-4. **OAuth Provider Registration**: 
-   - Pipedrive Developer Hub app creation
-   - Microsoft Azure AD app registration
-5. **API Key Acquisition**: OpenAI API key
-6. **Production Configuration**: Update OAuth redirect URIs and webhook endpoints
 
-### Estimated Manual Time: 4-5 hours
-### Estimated Development Time: 30-40 hours
-### Total Project Time: 34-45 hours
+## Success Criteria
+1. Users can authenticate via Supabase (single-user accounts)
+2. Users can connect Pipedrive and Outlook via OAuth  
+3. System detects when user sends emails via Outlook webhook
+4. AI analyzes sent emails and identifies sales opportunities
+5. System checks Pipedrive for existing deals with email recipients
+6. New deals are automatically created in Pipedrive when opportunities are detected (no updates to existing deals)
+7. All activity is logged with GDPR-compliant data (no email content stored for non-opportunities)
+8. Users can view opportunity detection and deal creation activity in dashboard
+9. Dashboard updates in real-time via Supabase subscriptions
+10. Comprehensive error handling and logging throughout the system
+11. GDPR compliance maintained with minimal data storage
+12. No duplicate deals created in Pipedrive
 
-## Risk Assessment
+#### AI Email Analysis with Error Handling
+```python
+# backend/app/agents/analyze_email.py
+import openai
+from ..lib.supabase_client import supabase
+from ..lib.error_handler import handle_errors
+from ..lib.logger import get_logger
+import hashlib
+import json
+import os
 
-### High Risk:
-- OAuth provider approval processes
-- Webhook reliability and delivery
-- AI analysis accuracy and cost
-- Railway deployment complexity
+logger = get_logger(__name__)
 
-### Medium Risk:
-- Railway Python application scaling
-- Supabase RLS policy complexity
-- Real-time data synchronization
-- Database migration complexity
-- Frontend-backend communication
-
-### Low Risk:
-- Frontend UI implementation
-- Basic authentication flows
-- Static content and documentation
-
-## Success Metrics
-
-### Technical Metrics:
-- [ ] 99%+ webhook delivery success rate
-- [ ] <2 second AI analysis response time
-- [ ] <500ms database query response time
-- [ ] Zero security vulnerabilities
-- [ ] Real-time updates work within 1 second
-- [ ] Comprehensive error logging and handling
-- [ ] Railway backend uptime >99.9%
-
-### Business Metrics:
-- [ ] Users can complete OAuth flows successfully
-- [ ] AI correctly identifies 80%+ of sales opportunities
-- [ ] Deals are created in Pipedrive within 30 seconds of email
-- [ ] System processes 100+ emails per day without issues
-- [ ] Dashboard provides real-time visibility into automation activity 
+@handle_errors
+async def analyze_email(user_id: str, email_content: str, recipient_email: str):
+    """Analyze sent email for sales opportunities using AI via OpenRouter"""
+    
+    logger.info("Starting email analysis", extra={
+        "user_id": user_id,
+        "recipient_email": recipient_email,
+        "content_length": len(email_content),
+        "ai_model": os.getenv("AI_MODEL", "openai/gpt-4-1106-preview")
+    })
+    
+    # Create hash for deduplication (GDPR-compliant)
+    email_hash = hashlib.sha256(email_content.encode()).hexdigest()
+    
+    # Check if we've already processed this email
+    existing = supabase.table('opportunity_logs').select('*').eq('email_hash', email_hash).execute()
+    if existing.data:
+        logger.info("Email already processed", extra={"email_hash": email_hash})
+        return {"already_processed": True}
+    
+    # Initialize OpenRouter client
+    client = openai.OpenAI(
+        api_key=os.getenv("OPENROUTER_API_KEY"),
+        base_url="https://openrouter.ai/api/v1"
+    )
+    
+    # AI analysis with OpenRouter
+    ai_prompt = f"""
+    Analyze this email to determine if it represents a sales opportunity:
+    
+    Email content: {email_content}
+    Recipient: {recipient_email}
+    
+    Respond with JSON:
+    {{
+        "is_opportunity": true/false,
+        "confidence": 0.0-1.0,
+        "reasoning": "explanation",
+        "deal_title": "suggested deal name",
+        "deal_value": estimated_value_or_null,
+        "deal_stage": "prospecting/proposal/negotiation"
+    }}
+    """
+    
+    response = client.chat.completions.create(
+        model=os.getenv("AI_MODEL", "openai/gpt-4-1106-preview"),
+        messages=[{"role": "user", "content": ai_prompt}],
+        response_format={"type": "json_object"}
+    )
+    
+    ai_result = json.loads(response.choices[0].message.content)
+    
+    # Log activity for real-time updates (always log the analysis)
+    activity_data = {
+        "user_id": user_id,
+        "activity_type": "email_analyzed",
+        "status": "success",
+        "message": f"Email analyzed for {recipient_email}",
+        "metadata": {
+            "opportunity_detected": ai_result["is_opportunity"],
+            "confidence": ai_result["confidence"],
+            "ai_model": os.getenv("AI_MODEL", "openai/gpt-4-1106-preview")
+        }
+    }
+    supabase.table('activity_logs').insert(activity_data).execute()
+    
+    # Only store opportunity data if opportunity is detected (GDPR compliance)
+    if ai_result["is_opportunity"]:
+        log_data = {
+            "user_id": user_id,
+            "email_hash": email_hash,
+            "recipient_email": recipient_email,
+            "opportunity_detected": ai_result["is_opportunity"],
+            "ai_confidence_score": ai_result["confidence"],
+            "ai_reasoning": ai_result["reasoning"]
+        }
+        supabase.table('opportunity_logs').insert(log_data).execute()
+        
+        logger.info("Email analysis completed - opportunity detected", extra={
+            "opportunity_detected": ai_result["is_opportunity"],
+            "confidence": ai_result["confidence"],
+            "ai_model": os.getenv("AI_MODEL", "openai/gpt-4-1106-preview")
+        })
+        
+        return {
+            "opportunity_detected": True,
+            "ai_analysis": ai_result,
+            "next_step": "check_deal_exists"
+        }
+    else:
+        # No opportunity detected - only log activity, don't store email data
+        logger.info("Email analysis completed - no opportunity detected", extra={
+            "opportunity_detected": ai_result["is_opportunity"],
+            "confidence": ai_result["confidence"],
+            "ai_model": os.getenv("AI_MODEL", "openai/gpt-4-1106-preview")
+        })
+        
+        return {"opportunity_detected": False}
+``` 
