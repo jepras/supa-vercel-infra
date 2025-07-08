@@ -50,38 +50,86 @@ class PipedriveManager:
     def _load_tokens(self):
         """Load access and refresh tokens from Supabase."""
         try:
-            # For testing, use the provided refresh token
-            access_token = os.getenv("PIPEDRIVE_ACCESS_TOKEN")
-            refresh_token = (
-                os.getenv("PIPEDRIVE_REFRESH_TOKEN")
-                or "Jm1ScRJ-CLdEcMvElsqq8uWtiddcu6gy7nES70vIH6sq3xZEfZbnoyScq2y7ZvKvsf3egge6qTPlJReyEMgYrnjSRUdyxuT-Jsk="
+            # Check if we're in testing mode (using environment variables)
+            if os.getenv("PIPEDRIVE_ACCESS_TOKEN"):
+                agent_logger.info(
+                    "Loading Pipedrive tokens from environment (testing mode)"
+                )
+                access_token = os.getenv("PIPEDRIVE_ACCESS_TOKEN")
+                refresh_token = os.getenv("PIPEDRIVE_REFRESH_TOKEN")
+
+                # Decrypt refresh token if it looks encrypted
+                if (
+                    refresh_token
+                    and len(refresh_token) > 60
+                    and not refresh_token.startswith("v1u:")
+                ):
+                    try:
+                        agent_logger.info("Attempting to decrypt refresh token...")
+                        refresh_token = token_encryption.decrypt_token(refresh_token)
+                        agent_logger.info("Refresh token decrypted successfully.")
+                    except Exception as e:
+                        agent_logger.error(
+                            "Failed to decrypt refresh token", {"error": str(e)}
+                        )
+                        raise PipedriveError(
+                            f"Failed to decrypt refresh token: {str(e)}"
+                        )
+
+                self.tokens = {
+                    "access_token": access_token,
+                    "refresh_token": refresh_token,
+                }
+
+                if not self.tokens["access_token"]:
+                    raise PipedriveError("No Pipedrive access token found")
+
+                agent_logger.info("Pipedrive tokens loaded from environment")
+                return
+
+            # Production mode: Load tokens from Supabase
+            agent_logger.info(
+                f"Loading Pipedrive tokens from Supabase for user: {self.user_id}"
             )
 
-            # Decrypt refresh token if it looks encrypted
-            if (
-                refresh_token
-                and len(refresh_token) > 60
-                and not refresh_token.startswith("v1u:")
-            ):
-                try:
-                    agent_logger.info("Attempting to decrypt refresh token...")
-                    refresh_token = token_encryption.decrypt_token(refresh_token)
-                    agent_logger.info("Refresh token decrypted successfully.")
-                except Exception as e:
-                    agent_logger.error(
-                        "Failed to decrypt refresh token", {"error": str(e)}
-                    )
-                    raise PipedriveError(f"Failed to decrypt refresh token: {str(e)}")
+            result = (
+                supabase_manager.client.table("integrations")
+                .select("*")
+                .eq("provider", "pipedrive")
+                .eq("user_id", self.user_id)
+                .execute()
+            )
 
-            self.tokens = {
-                "access_token": access_token,
-                "refresh_token": refresh_token,
-            }
+            if not result.data:
+                raise PipedriveError("No Pipedrive integration found for user")
 
-            if not self.tokens["access_token"]:
-                raise PipedriveError("No Pipedrive access token found")
+            integration = result.data[0]
 
-            agent_logger.info("Pipedrive tokens loaded for testing")
+            # Decrypt tokens from Supabase
+            try:
+                access_token = token_encryption.decrypt_token(
+                    integration["access_token"]
+                )
+                refresh_token = (
+                    token_encryption.decrypt_token(integration["refresh_token"])
+                    if integration["refresh_token"]
+                    else None
+                )
+
+                self.tokens = {
+                    "access_token": access_token,
+                    "refresh_token": refresh_token,
+                }
+
+                agent_logger.info("Pipedrive tokens loaded from Supabase successfully")
+
+            except Exception as e:
+                agent_logger.error(
+                    "Failed to decrypt tokens from Supabase", {"error": str(e)}
+                )
+                raise PipedriveError(
+                    f"Failed to decrypt tokens from Supabase: {str(e)}"
+                )
 
         except Exception as e:
             agent_logger.error("Failed to load Pipedrive tokens", {"error": str(e)})

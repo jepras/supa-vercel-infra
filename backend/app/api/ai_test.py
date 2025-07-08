@@ -240,3 +240,112 @@ Mathias""",
             summary={},
             error=f"Production test failed: {str(e)}",
         )
+
+
+@router.post("/test-with-user-tokens/{user_id}", response_model=ProductionTestResponse)
+async def test_with_user_tokens(user_id: str):
+    """Test production AI agents with a specific user's stored tokens."""
+
+    # Check required environment variables
+    required_vars = [
+        "OPENROUTER_API_KEY",
+        "NEXT_PUBLIC_SUPABASE_URL",
+        "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+    ]
+    missing_vars = [var for var in required_vars if not os.getenv(var)]
+
+    if missing_vars:
+        return ProductionTestResponse(
+            success=False,
+            results=[],
+            summary={},
+            error=f"Missing required environment variables: {missing_vars}",
+        )
+
+    # Sample email for testing with user tokens
+    sample_email = {
+        "id": 1,
+        "from": "mathias@besafe.dk",
+        "to": "peter.hansen@microsoft.com",
+        "subject": "Tilbud på sikkerhedsløsninger - Microsoft Danmark",
+        "content": """Hej Peter,
+
+Jeg håber, du har haft en god uge. Som aftalt sender jeg dig et tilbud på vores sikkerhedsløsninger til Microsoft Danmark.
+
+Vi kan tilbyde:
+- Avancerede firewall-løsninger
+- Endpoint protection
+- Security awareness træning
+- 24/7 support
+
+Det samlede beløb er DKK 45.000 ekskl. moms for et års løsning.
+
+Vil du have mig til at booke et møde til næste uge, så vi kan gennemgå detaljerne?
+
+Med venlig hilsen,
+Mathias Jensen
+BeSafe Security Solutions
+Tlf: +45 70 12 34 56
+Email: mathias@besafe.dk""",
+        "received_at": "2024-01-15T10:30:00Z",
+    }
+
+    results = []
+
+    try:
+        # Create orchestrator with specific user ID
+        orchestrator = AgentOrchestrator(user_id)
+
+        # Process email
+        result = await orchestrator.process_email(sample_email)
+
+        # Add email info to result
+        result["email_info"] = {
+            "id": sample_email["id"],
+            "to": sample_email["to"],
+            "subject": sample_email["subject"],
+        }
+
+        results.append(result)
+
+        # Calculate summary
+        total_emails = len(results)
+        successful_processing = sum(1 for r in results if r.get("success"))
+        sales_opportunities = sum(
+            1
+            for r in results
+            if r.get("success")
+            and r.get("ai_result", {}).get("is_sales_opportunity", False)
+        )
+        deals_created = sum(
+            1
+            for r in results
+            if r.get("success")
+            and r.get("pipedrive_result", {}).get("deal_created", False)
+        )
+
+        # Count outcomes
+        outcome_counts = {}
+        for result in results:
+            if result.get("success"):
+                outcome = result.get("outcome", "Unknown")
+                outcome_counts[outcome] = outcome_counts.get(outcome, 0) + 1
+
+        summary = {
+            "total_emails": total_emails,
+            "successful_processing": successful_processing,
+            "sales_opportunities": sales_opportunities,
+            "deals_created": deals_created,
+            "outcome_counts": outcome_counts,
+            "user_id": user_id,
+        }
+
+        return ProductionTestResponse(success=True, results=results, summary=summary)
+
+    except Exception as e:
+        return ProductionTestResponse(
+            success=False,
+            results=[],
+            summary={},
+            error=f"Production test with user tokens failed: {str(e)}",
+        )
