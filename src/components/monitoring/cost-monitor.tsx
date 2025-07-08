@@ -1,10 +1,9 @@
 "use client"
 
-import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { apiClient } from "@/lib/api"
+import { useMonitoring } from "./monitoring-context"
 
 interface CostSummary {
   total_cost: number
@@ -16,12 +15,13 @@ interface CostSummary {
 
 interface DailyCost {
   daily_cost: number
-  limit_check: {
-    daily_cost: number
-    daily_limit: number
-    limit_reached: boolean
-    remaining_budget: number
-  }
+}
+
+interface LimitCheck {
+  daily_cost: number
+  daily_limit: number
+  limit_reached: boolean
+  remaining_budget: number
 }
 
 interface ModelUsageStats {
@@ -34,50 +34,21 @@ interface ModelUsageStats {
 }
 
 export function CostMonitor() {
-  const [costSummary, setCostSummary] = useState<CostSummary | null>(null)
-  const [dailyCost, setDailyCost] = useState<DailyCost | null>(null)
-  const [modelStats, setModelStats] = useState<ModelUsageStats | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const { data, loading, error } = useMonitoring()
+  const costSummary = data?.costSummary
+  const dailyCost = data?.dailyCost
+  const limitCheck = data?.limitCheck
+  const modelStats = data?.modelStats
 
-  const fetchCostData = async () => {
-    try {
-      setLoading(true)
-      setError(null)
+  const dailyLimitPercentage = limitCheck 
+    ? (limitCheck.daily_cost / limitCheck.daily_limit) * 100 
+    : 0
 
-      // Fetch cost summary (7 days)
-      const summaryResponse = await apiClient.getCostSummary(7)
-      if (summaryResponse.data) {
-        setCostSummary(summaryResponse.data)
-      }
-
-      // Fetch daily cost
-      const dailyResponse = await apiClient.getDailyCost()
-      if (dailyResponse.data) {
-        setDailyCost(dailyResponse.data)
-      }
-
-      // Fetch model usage stats
-      const modelResponse = await apiClient.getModelUsageStats()
-      if (modelResponse.data) {
-        setModelStats(modelResponse.data)
-      }
-
-    } catch (err) {
-      console.error("Error fetching cost data:", err)
-      setError("Failed to load cost data. Please check if the backend server is running.")
-    } finally {
-      setLoading(false)
-    }
+  const getLimitStatusColor = () => {
+    if (dailyLimitPercentage >= 90) return "text-red-500"
+    if (dailyLimitPercentage >= 75) return "text-yellow-500"
+    return "text-green-500"
   }
-
-  useEffect(() => {
-    fetchCostData()
-    
-    // Refresh every 30 seconds
-    const interval = setInterval(fetchCostData, 30000)
-    return () => clearInterval(interval)
-  }, [])
 
   if (loading) {
     return (
@@ -101,16 +72,6 @@ export function CostMonitor() {
     )
   }
 
-  const dailyLimitPercentage = dailyCost 
-    ? (dailyCost.limit_check.daily_cost / dailyCost.limit_check.daily_limit) * 100 
-    : 0
-
-  const getLimitStatusColor = () => {
-    if (dailyLimitPercentage >= 90) return "text-red-500"
-    if (dailyLimitPercentage >= 75) return "text-yellow-500"
-    return "text-green-500"
-  }
-
   return (
     <div className="space-y-6">
       <Card>
@@ -118,7 +79,7 @@ export function CostMonitor() {
           <CardTitle className="flex items-center gap-2">
             💰 Cost Monitoring
             <Badge variant="outline" className={getLimitStatusColor()}>
-              ${dailyCost?.limit_check.daily_cost.toFixed(4) || "0.0000"}
+              ${limitCheck?.daily_cost.toFixed(4) || "0.0000"}
             </Badge>
           </CardTitle>
           <CardDescription>
@@ -131,7 +92,7 @@ export function CostMonitor() {
             <div className="flex justify-between text-sm">
               <span>Daily Budget Usage</span>
               <span className={getLimitStatusColor()}>
-                ${dailyCost?.limit_check.daily_cost.toFixed(4) || "0.0000"} / ${dailyCost?.limit_check.daily_limit.toFixed(2) || "20.00"}
+                ${limitCheck?.daily_cost.toFixed(4) || "0.0000"} / ${limitCheck?.daily_limit.toFixed(2) || "20.00"}
               </span>
             </div>
             <div className="w-full bg-gray-200 rounded-full h-2">
@@ -141,7 +102,7 @@ export function CostMonitor() {
               />
             </div>
             <div className="flex justify-between text-xs text-muted-foreground">
-              <span>Remaining: ${dailyCost?.limit_check.remaining_budget.toFixed(2) || "20.00"}</span>
+              <span>Remaining: ${limitCheck?.remaining_budget.toFixed(2) || "20.00"}</span>
               <span>{dailyLimitPercentage.toFixed(1)}% used</span>
             </div>
           </div>
@@ -165,7 +126,6 @@ export function CostMonitor() {
           <TabsTrigger value="models">Model Usage</TabsTrigger>
           <TabsTrigger value="daily">Daily Trends</TabsTrigger>
         </TabsList>
-        
         <TabsContent value="models" className="space-y-4">
           <Card>
             <CardHeader>
@@ -175,20 +135,20 @@ export function CostMonitor() {
             <CardContent>
               {modelStats && Object.keys(modelStats).length > 0 ? (
                 <div className="space-y-3">
-                  {Object.entries(modelStats)
-                    .sort(([,a], [,b]) => b.total_cost - a.total_cost)
+                  {Object.entries(modelStats || {})
+                    .sort(([,a], [,b]) => (b as any).total_cost - (a as any).total_cost)
                     .map(([model, stats]) => (
                       <div key={model} className="flex items-center justify-between p-3 border rounded-lg">
                         <div className="flex-1">
                           <div className="font-medium">{model}</div>
                           <div className="text-sm text-muted-foreground">
-                            {stats.total_calls} calls • {stats.total_input_tokens.toLocaleString()} input • {stats.total_output_tokens.toLocaleString()} output tokens
+                            {(stats as any).total_calls} calls • {(stats as any).total_input_tokens.toLocaleString()} input • {(stats as any).total_output_tokens.toLocaleString()} output tokens
                           </div>
                         </div>
                         <div className="text-right">
-                          <div className="font-bold">${(stats.total_cost || 0).toFixed(4)}</div>
+                          <div className="font-bold">${((stats as any).total_cost || 0).toFixed(4)}</div>
                           <div className="text-xs text-muted-foreground">
-                            ${stats.total_calls > 0 ? ((stats.total_cost || 0) / stats.total_calls).toFixed(6) : "0.000000"}/call
+                            {(stats as any).total_calls > 0 ? (((stats as any).total_cost || 0) / (stats as any).total_calls).toFixed(6) : "0.000000"}/call
                           </div>
                         </div>
                       </div>
@@ -202,7 +162,6 @@ export function CostMonitor() {
             </CardContent>
           </Card>
         </TabsContent>
-
         <TabsContent value="daily" className="space-y-4">
           <Card>
             <CardHeader>
@@ -223,7 +182,7 @@ export function CostMonitor() {
                             day: 'numeric' 
                           })}
                         </div>
-                        <div className="font-bold">${(cost || 0).toFixed(4)}</div>
+                        <div className="font-bold">${((cost as number) || 0).toFixed(4)}</div>
                       </div>
                     ))}
                 </div>

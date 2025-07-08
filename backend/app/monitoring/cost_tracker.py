@@ -12,6 +12,7 @@ from typing import Dict, Any, Optional, List
 from dataclasses import dataclass, asdict
 import logging
 from app.monitoring.agent_logger import agent_logger
+from app.lib.supabase_client import supabase_manager
 
 logger = logging.getLogger(__name__)
 
@@ -45,7 +46,6 @@ class CostTracker:
     """Tracks and monitors OpenRouter API costs"""
 
     def __init__(self):
-        self.cost_records: List[CostRecord] = []
         self.model_costs = self._initialize_model_costs()
         self.daily_limits = self._load_daily_limits()
 
@@ -101,7 +101,7 @@ class CostTracker:
 
         return input_cost + output_cost
 
-    def record_api_call(
+    async def record_api_call(
         self,
         model: str,
         input_tokens: int,
@@ -110,7 +110,7 @@ class CostTracker:
         correlation_id: str,
         user_id: Optional[str] = None,
     ) -> CostRecord:
-        """Record an API call and its cost"""
+        """Record an API call and its cost to the database"""
         cost = self.calculate_cost(model, input_tokens, output_tokens)
 
         record = CostRecord(
@@ -124,7 +124,23 @@ class CostTracker:
             user_id=user_id,
         )
 
-        self.cost_records.append(record)
+        # Store in database
+        try:
+            supabase_manager.client.table("cost_records").insert(
+                {
+                    "timestamp": record.timestamp,
+                    "model": record.model,
+                    "input_tokens": record.input_tokens,
+                    "output_tokens": record.output_tokens,
+                    "cost_usd": float(record.cost_usd),
+                    "operation": record.operation,
+                    "correlation_id": record.correlation_id,
+                    "user_id": record.user_id,
+                }
+            ).execute()
+        except Exception as e:
+            logger.error(f"Failed to store cost record in database: {str(e)}")
+            # Continue execution even if database storage fails
 
         # Log the cost
         agent_logger.info(
@@ -143,49 +159,61 @@ class CostTracker:
 
         return record
 
-    def get_daily_cost(self, date: Optional[datetime] = None) -> float:
-        """Get total cost for a specific date (defaults to today)"""
+    async def get_daily_cost(self, date: Optional[datetime] = None) -> float:
+        """Get total cost for a specific date (defaults to today) from database"""
         if date is None:
             date = datetime.utcnow()
 
         start_of_day = date.replace(hour=0, minute=0, second=0, microsecond=0)
         end_of_day = start_of_day + timedelta(days=1)
 
-        daily_records = [
-            record
-            for record in self.cost_records
-            if start_of_day <= datetime.fromisoformat(record.timestamp) < end_of_day
-        ]
+        try:
+            result = (
+                supabase_manager.client.table("cost_records")
+                .select("cost_usd")
+                .gte("timestamp", start_of_day.isoformat())
+                .lt("timestamp", end_of_day.isoformat())
+                .execute()
+            )
 
-        return sum(record.cost_usd for record in daily_records)
+            total_cost = sum(record["cost_usd"] for record in result.data)
+            return total_cost
+        except Exception as e:
+            logger.error(f"Failed to get daily cost from database: {str(e)}")
+            return 0.0
 
-    def get_user_daily_cost(
+    async def get_user_daily_cost(
         self, user_id: str, date: Optional[datetime] = None
     ) -> float:
-        """Get total cost for a specific user on a specific date"""
+        """Get total cost for a specific user on a specific date from database"""
         if date is None:
             date = datetime.utcnow()
 
         start_of_day = date.replace(hour=0, minute=0, second=0, microsecond=0)
         end_of_day = start_of_day + timedelta(days=1)
 
-        user_records = [
-            record
-            for record in self.cost_records
-            if (
-                record.user_id == user_id
-                and start_of_day
-                <= datetime.fromisoformat(record.timestamp)
-                < end_of_day
+        try:
+            result = (
+                supabase_manager.client.table("cost_records")
+                .select("cost_usd")
+                .eq("user_id", user_id)
+                .gte("timestamp", start_of_day.isoformat())
+                .lt("timestamp", end_of_day.isoformat())
+                .execute()
             )
-        ]
 
-        return sum(record.cost_usd for record in user_records)
+            total_cost = sum(record["cost_usd"] for record in result.data)
+            return total_cost
+        except Exception as e:
+            logger.error(f"Failed to get user daily cost from database: {str(e)}")
+            return 0.0
 
-    def check_daily_limit(self, user_id: Optional[str] = None) -> Dict[str, Any]:
+    async def check_daily_limit(self, user_id: Optional[str] = None) -> Dict[str, Any]:
         """Check if daily cost limit has been reached"""
         daily_cost = (
-            self.get_user_daily_cost(user_id) if user_id else self.get_daily_cost()
+            await self.get_user_daily_cost(user_id)
+            if user_id
+            else await self.get_daily_cost()
         )
         limit = self.daily_limits.get(user_id, self.daily_limits["default"])
 
@@ -196,90 +224,111 @@ class CostTracker:
             "remaining_budget": max(0, limit - daily_cost),
         }
 
-    def get_cost_summary(self, days: int = 7) -> Dict[str, Any]:
-        """Get cost summary for the last N days"""
+    async def get_cost_summary(self, days: int = 7) -> Dict[str, Any]:
+        """Get cost summary for the last N days from database"""
         end_date = datetime.utcnow()
         start_date = end_date - timedelta(days=days)
 
-        # Filter records for the date range
-        recent_records = [
-            record
-            for record in self.cost_records
-            if start_date <= datetime.fromisoformat(record.timestamp) <= end_date
-        ]
-
-        # Group by date
-        daily_costs = {}
-        for record in recent_records:
-            date = datetime.fromisoformat(record.timestamp).date().isoformat()
-            daily_costs[date] = daily_costs.get(date, 0) + record.cost_usd
-
-        # Group by model
-        model_costs = {}
-        for record in recent_records:
-            model_costs[record.model] = (
-                model_costs.get(record.model, 0) + record.cost_usd
+        try:
+            # Get all records in the date range
+            result = (
+                supabase_manager.client.table("cost_records")
+                .select("*")
+                .gte("timestamp", start_date.isoformat())
+                .lte("timestamp", end_date.isoformat())
+                .execute()
             )
 
-        return {
-            "total_cost": sum(record.cost_usd for record in recent_records),
-            "total_calls": len(recent_records),
-            "daily_costs": daily_costs,
-            "model_costs": model_costs,
-            "period_days": days,
-        }
+            records = result.data
 
-    def get_model_usage_stats(self) -> Dict[str, Any]:
-        """Get usage statistics by model"""
-        model_stats = {}
+            # Calculate totals
+            total_cost = sum(record["cost_usd"] for record in records)
+            total_calls = len(records)
 
-        for record in self.cost_records:
-            if record.model not in model_stats:
-                model_stats[record.model] = {
-                    "total_calls": 0,
-                    "total_cost": 0.0,
-                    "total_input_tokens": 0,
-                    "total_output_tokens": 0,
-                }
+            # Group by date
+            daily_costs = {}
+            for record in records:
+                date = (
+                    datetime.fromisoformat(record["timestamp"].replace("Z", "+00:00"))
+                    .date()
+                    .isoformat()
+                )
+                daily_costs[date] = daily_costs.get(date, 0) + record["cost_usd"]
 
-            stats = model_stats[record.model]
-            stats["total_calls"] += 1
-            stats["total_cost"] += record.cost_usd
-            stats["total_input_tokens"] += record.input_tokens
-            stats["total_output_tokens"] += record.output_tokens
+            # Group by model
+            model_costs = {}
+            for record in records:
+                model = record["model"]
+                model_costs[model] = model_costs.get(model, 0) + record["cost_usd"]
 
-        return model_stats
+            return {
+                "total_cost": total_cost,
+                "total_calls": total_calls,
+                "daily_costs": daily_costs,
+                "model_costs": model_costs,
+                "period_days": days,
+            }
+        except Exception as e:
+            logger.error(f"Failed to get cost summary from database: {str(e)}")
+            return {
+                "total_cost": 0.0,
+                "total_calls": 0,
+                "daily_costs": {},
+                "model_costs": {},
+                "period_days": days,
+            }
 
-    def export_cost_data(self, format: str = "json") -> str:
+    async def get_model_usage_stats(self) -> Dict[str, Any]:
+        """Get usage statistics by model from database"""
+        try:
+            result = supabase_manager.client.table("cost_records").select("*").execute()
+
+            model_stats = {}
+            for record in result.data:
+                model = record["model"]
+                if model not in model_stats:
+                    model_stats[model] = {
+                        "total_calls": 0,
+                        "total_cost": 0.0,
+                        "total_input_tokens": 0,
+                        "total_output_tokens": 0,
+                    }
+
+                model_stats[model]["total_calls"] += 1
+                model_stats[model]["total_cost"] += record["cost_usd"]
+                model_stats[model]["total_input_tokens"] += record["input_tokens"]
+                model_stats[model]["total_output_tokens"] += record["output_tokens"]
+
+            return model_stats
+        except Exception as e:
+            logger.error(f"Failed to get model usage stats from database: {str(e)}")
+            return {}
+
+    async def export_cost_data(self, format: str = "json") -> str:
         """Export cost data in specified format"""
-        if format.lower() == "json":
-            return json.dumps(
-                {
-                    "cost_records": [asdict(record) for record in self.cost_records],
-                    "model_costs": {
-                        name: asdict(cost) for name, cost in self.model_costs.items()
-                    },
-                    "daily_limits": self.daily_limits,
-                },
-                indent=2,
-            )
-        else:
-            raise ValueError(f"Unsupported export format: {format}")
+        try:
+            result = supabase_manager.client.table("cost_records").select("*").execute()
 
-    def clear_old_records(self, days_to_keep: int = 30):
-        """Clear cost records older than specified days"""
+            if format.lower() == "json":
+                return json.dumps(result.data, indent=2, default=str)
+            else:
+                raise ValueError(f"Unsupported format: {format}")
+        except Exception as e:
+            logger.error(f"Failed to export cost data: {str(e)}")
+            return "[]"
+
+    async def clear_old_records(self, days_to_keep: int = 30):
+        """Clear old cost records from database"""
         cutoff_date = datetime.utcnow() - timedelta(days=days_to_keep)
 
-        original_count = len(self.cost_records)
-        self.cost_records = [
-            record
-            for record in self.cost_records
-            if datetime.fromisoformat(record.timestamp) > cutoff_date
-        ]
-
-        cleared_count = original_count - len(self.cost_records)
-        logger.info(f"Cleared {cleared_count} old cost records")
+        try:
+            supabase_manager.client.table("cost_records").delete().lt(
+                "timestamp", cutoff_date.isoformat()
+            ).execute()
+            logger.info(f"Cleared cost records older than {days_to_keep} days")
+        except Exception as e:
+            logger.error(f"Failed to clear old cost records: {str(e)}")
 
 
-# Global cost tracker instance
+# Create singleton instance
 cost_tracker = CostTracker()

@@ -10,6 +10,8 @@ import { useRouter } from 'next/navigation'
 import { useAuth } from '@/components/auth-provider'
 import { ConnectivityTest } from '@/components/connectivity-test'
 import { MonitoringDashboard } from '@/components/monitoring/monitoring-dashboard'
+import { MonitoringProvider } from '@/components/monitoring/monitoring-context'
+import { LogsDashboard } from '@/components/logs/logs-dashboard'
 import { Loader2, Link, Unlink, Bell, BellOff } from 'lucide-react'
 
 interface Integration {
@@ -21,20 +23,12 @@ interface Integration {
   last_sync_at: string | null
 }
 
-interface ActivityLog {
-  id: string
-  activity_type: string
-  status: string
-  message: string
-  created_at: string
-  metadata: any
-}
+
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000'
 
 export default function DashboardPage() {
   const [integrations, setIntegrations] = useState<Integration[]>([])
-  const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isConnecting, setIsConnecting] = useState(false)
   const [isTesting, setIsTesting] = useState(false)
@@ -57,8 +51,6 @@ export default function DashboardPage() {
       
       console.log('User authenticated:', user.email)
       fetchIntegrations()
-      fetchActivityLogs()
-      subscribeToActivityLogs()
       checkConnectionStatus()
       checkMicrosoftConnectionStatus()
       fetchWebhookSubscriptions()
@@ -83,46 +75,7 @@ export default function DashboardPage() {
     setIntegrations(data || [])
   }
 
-  async function fetchActivityLogs() {
-    if (!user) return
-    
-    const { data, error } = await supabase
-      .from('activity_logs')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false })
-      .limit(50)
 
-    if (error) {
-      console.error('Error fetching activity logs:', error)
-      return
-    }
-
-    setActivityLogs(data || [])
-  }
-
-  function subscribeToActivityLogs() {
-    if (!user) return
-    
-    const subscription = supabase
-      .channel('activity_logs')
-      .on('postgres_changes', 
-        { 
-          event: 'INSERT', 
-          schema: 'public', 
-          table: 'activity_logs',
-          filter: `user_id=eq.${user.id}`
-        }, 
-        (payload) => {
-          setActivityLogs(prev => [payload.new as ActivityLog, ...prev.slice(0, 49)])
-        }
-      )
-      .subscribe()
-
-    return () => {
-      subscription.unsubscribe()
-    }
-  }
 
   async function handleConnectPipedrive() {
     try {
@@ -480,7 +433,7 @@ export default function DashboardPage() {
         <Tabs defaultValue="integrations" className="space-y-6">
           <TabsList>
             <TabsTrigger value="integrations">Integrations</TabsTrigger>
-            <TabsTrigger value="activity">Activity Logs</TabsTrigger>
+            <TabsTrigger value="logs">Logs</TabsTrigger>
             <TabsTrigger value="monitoring">Monitoring</TabsTrigger>
             <TabsTrigger value="connectivity">Connectivity Test</TabsTrigger>
           </TabsList>
@@ -716,45 +669,14 @@ export default function DashboardPage() {
             </div>
           </TabsContent>
 
-          <TabsContent value="activity" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Recent Activity</CardTitle>
-                <CardDescription>
-                  Latest activity from your integrations
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {activityLogs.length === 0 ? (
-                  <p className="text-muted-foreground text-center py-8">
-                    No activity logs yet. Connect an integration to see activity.
-                  </p>
-                ) : (
-                  <div className="space-y-4">
-                    {activityLogs.map((log) => (
-                      <div key={log.id} className="flex items-start gap-4 p-4 border rounded-lg">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            <Badge variant={log.status === 'success' ? 'default' : 'destructive'}>
-                              {log.status}
-                            </Badge>
-                            <span className="text-sm font-medium">{log.activity_type}</span>
-                          </div>
-                          <p className="text-sm text-muted-foreground">{log.message}</p>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            {new Date(log.created_at).toLocaleString()}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+          <TabsContent value="logs" className="space-y-4">
+            <LogsDashboard />
           </TabsContent>
 
           <TabsContent value="monitoring" className="space-y-4">
-            <MonitoringDashboard />
+            <MonitoringProvider>
+              <MonitoringDashboard />
+            </MonitoringProvider>
           </TabsContent>
 
           <TabsContent value="connectivity" className="space-y-4">

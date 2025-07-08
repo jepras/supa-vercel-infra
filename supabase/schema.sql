@@ -2,6 +2,7 @@
 -- SUPABASE DATABASE SCHEMA
 -- Current schema after all migrations (001-008)
 -- Generated: $(date)
+-- Updated: 2025-07-08 (Added monitoring tables)
 -- =============================================================================
 
 -- =============================================================================
@@ -116,6 +117,96 @@ CREATE TABLE "public"."webhook_subscriptions" (
 );
 
 -- =============================================================================
+-- MONITORING TABLES
+-- Purpose: Database persistence for cost tracking, performance metrics, and rate limiting
+-- =============================================================================
+
+-- =============================================================================
+-- TABLE: cost_records
+-- Purpose: Records of OpenRouter API costs for AI operations
+-- =============================================================================
+CREATE TABLE "public"."cost_records" (
+    "id" uuid NOT NULL DEFAULT gen_random_uuid(),
+    "timestamp" timestamp with time zone NOT NULL DEFAULT now(),
+    "model" varchar(100) NOT NULL,
+    "input_tokens" integer NOT NULL,
+    "output_tokens" integer NOT NULL,
+    "cost_usd" decimal(10,6) NOT NULL,
+    "operation" varchar(100) NOT NULL,
+    "correlation_id" uuid NOT NULL,
+    "user_id" uuid REFERENCES auth.users(id) ON DELETE SET NULL,
+    "created_at" timestamp with time zone DEFAULT now(),
+    CONSTRAINT "cost_records_pkey" PRIMARY KEY ("id")
+);
+
+-- =============================================================================
+-- TABLE: performance_metrics
+-- Purpose: Performance metrics for system operations
+-- =============================================================================
+CREATE TABLE "public"."performance_metrics" (
+    "id" uuid NOT NULL DEFAULT gen_random_uuid(),
+    "timestamp" timestamp with time zone NOT NULL DEFAULT now(),
+    "operation" varchar(100) NOT NULL,
+    "duration_ms" integer NOT NULL,
+    "success" boolean NOT NULL,
+    "correlation_id" uuid NOT NULL,
+    "user_id" uuid REFERENCES auth.users(id) ON DELETE SET NULL,
+    "metadata" jsonb DEFAULT '{}',
+    "created_at" timestamp with time zone DEFAULT now(),
+    CONSTRAINT "performance_metrics_pkey" PRIMARY KEY ("id")
+);
+
+-- =============================================================================
+-- TABLE: system_metrics
+-- Purpose: System-level metrics like CPU, memory usage
+-- =============================================================================
+CREATE TABLE "public"."system_metrics" (
+    "id" uuid NOT NULL DEFAULT gen_random_uuid(),
+    "timestamp" timestamp with time zone NOT NULL DEFAULT now(),
+    "metric_name" varchar(100) NOT NULL,
+    "metric_value" decimal(10,4) NOT NULL,
+    "metric_unit" varchar(50) NOT NULL,
+    "created_at" timestamp with time zone DEFAULT now(),
+    CONSTRAINT "system_metrics_pkey" PRIMARY KEY ("id")
+);
+
+-- =============================================================================
+-- TABLE: rate_limit_records
+-- Purpose: Records of rate limit checks and blocks
+-- =============================================================================
+CREATE TABLE "public"."rate_limit_records" (
+    "id" uuid NOT NULL DEFAULT gen_random_uuid(),
+    "timestamp" timestamp with time zone NOT NULL DEFAULT now(),
+    "operation" varchar(100) NOT NULL,
+    "user_id" uuid REFERENCES auth.users(id) ON DELETE SET NULL,
+    "ip_address" inet,
+    "user_agent" text,
+    "correlation_id" uuid NOT NULL,
+    "was_blocked" boolean NOT NULL DEFAULT false,
+    "created_at" timestamp with time zone DEFAULT now(),
+    CONSTRAINT "rate_limit_records_pkey" PRIMARY KEY ("id")
+);
+
+-- =============================================================================
+-- TABLE: rate_limit_windows
+-- Purpose: Current rate limit windows and usage counts
+-- =============================================================================
+CREATE TABLE "public"."rate_limit_windows" (
+    "id" uuid NOT NULL DEFAULT gen_random_uuid(),
+    "operation" varchar(100) NOT NULL,
+    "user_id" uuid REFERENCES auth.users(id) ON DELETE SET NULL,
+    "window_start" timestamp with time zone NOT NULL,
+    "window_end" timestamp with time zone NOT NULL,
+    "requests_count" integer NOT NULL DEFAULT 0,
+    "max_requests" integer NOT NULL,
+    "window_seconds" integer NOT NULL,
+    "created_at" timestamp with time zone DEFAULT now(),
+    "updated_at" timestamp with time zone DEFAULT now(),
+    CONSTRAINT "rate_limit_windows_pkey" PRIMARY KEY ("id"),
+    CONSTRAINT "rate_limit_windows_unique" UNIQUE ("operation", "user_id", "window_start")
+);
+
+-- =============================================================================
 -- INDEXES
 -- Performance optimization indexes
 -- =============================================================================
@@ -151,6 +242,28 @@ CREATE INDEX "idx_webhook_subscriptions_is_active" ON "public"."webhook_subscrip
 CREATE INDEX "idx_webhook_subscriptions_expiration_date" ON "public"."webhook_subscriptions" ("expiration_date");
 CREATE INDEX "idx_webhook_subscriptions_resource" ON "public"."webhook_subscriptions" ("resource");
 
+-- Monitoring tables indexes
+CREATE INDEX "idx_cost_records_timestamp" ON "public"."cost_records" ("timestamp");
+CREATE INDEX "idx_cost_records_user_id" ON "public"."cost_records" ("user_id");
+CREATE INDEX "idx_cost_records_model" ON "public"."cost_records" ("model");
+CREATE INDEX "idx_cost_records_operation" ON "public"."cost_records" ("operation");
+
+CREATE INDEX "idx_performance_metrics_timestamp" ON "public"."performance_metrics" ("timestamp");
+CREATE INDEX "idx_performance_metrics_operation" ON "public"."performance_metrics" ("operation");
+CREATE INDEX "idx_performance_metrics_user_id" ON "public"."performance_metrics" ("user_id");
+CREATE INDEX "idx_performance_metrics_success" ON "public"."performance_metrics" ("success");
+
+CREATE INDEX "idx_system_metrics_timestamp" ON "public"."system_metrics" ("timestamp");
+CREATE INDEX "idx_system_metrics_name" ON "public"."system_metrics" ("metric_name");
+
+CREATE INDEX "idx_rate_limit_records_timestamp" ON "public"."rate_limit_records" ("timestamp");
+CREATE INDEX "idx_rate_limit_records_operation" ON "public"."rate_limit_records" ("operation");
+CREATE INDEX "idx_rate_limit_records_user_id" ON "public"."rate_limit_records" ("user_id");
+CREATE INDEX "idx_rate_limit_records_blocked" ON "public"."rate_limit_records" ("was_blocked");
+
+CREATE INDEX "idx_rate_limit_windows_operation_user" ON "public"."rate_limit_windows" ("operation", "user_id");
+CREATE INDEX "idx_rate_limit_windows_window_end" ON "public"."rate_limit_windows" ("window_end");
+
 -- =============================================================================
 -- ROW LEVEL SECURITY (RLS)
 -- Enable RLS and create policies for data isolation
@@ -162,6 +275,11 @@ ALTER TABLE "public"."activity_logs" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "public"."opportunity_logs" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "public"."emails" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "public"."webhook_subscriptions" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "public"."cost_records" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "public"."performance_metrics" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "public"."system_metrics" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "public"."rate_limit_records" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "public"."rate_limit_windows" ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policies
 CREATE POLICY "Users can only access their own integrations" ON "public"."integrations"
@@ -178,6 +296,37 @@ CREATE POLICY "Users can only access their own emails" ON "public"."emails"
 
 CREATE POLICY "Users can only access their own webhook subscriptions" ON "public"."webhook_subscriptions"
     FOR ALL USING (auth.uid() = user_id);
+
+-- Monitoring tables RLS policies
+CREATE POLICY "Users can view their own cost records" ON "public"."cost_records"
+    FOR SELECT USING (auth.uid() = user_id OR user_id IS NULL);
+
+CREATE POLICY "Service can insert cost records" ON "public"."cost_records"
+    FOR INSERT WITH CHECK (true);
+
+CREATE POLICY "Users can view their own performance metrics" ON "public"."performance_metrics"
+    FOR SELECT USING (auth.uid() = user_id OR user_id IS NULL);
+
+CREATE POLICY "Service can insert performance metrics" ON "public"."performance_metrics"
+    FOR INSERT WITH CHECK (true);
+
+CREATE POLICY "Authenticated users can view system metrics" ON "public"."system_metrics"
+    FOR SELECT USING (auth.role() = 'authenticated');
+
+CREATE POLICY "Service can insert system metrics" ON "public"."system_metrics"
+    FOR INSERT WITH CHECK (true);
+
+CREATE POLICY "Users can view their own rate limit records" ON "public"."rate_limit_records"
+    FOR SELECT USING (auth.uid() = user_id OR user_id IS NULL);
+
+CREATE POLICY "Service can insert rate limit records" ON "public"."rate_limit_records"
+    FOR INSERT WITH CHECK (true);
+
+CREATE POLICY "Users can view their own rate limit windows" ON "public"."rate_limit_windows"
+    FOR SELECT USING (auth.uid() = user_id OR user_id IS NULL);
+
+CREATE POLICY "Service can insert and update rate limit windows" ON "public"."rate_limit_windows"
+    FOR ALL USING (true);
 
 -- =============================================================================
 -- TRIGGERS
@@ -198,6 +347,9 @@ CREATE TRIGGER update_emails_updated_at BEFORE UPDATE ON emails
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 CREATE TRIGGER update_webhook_subscriptions_updated_at BEFORE UPDATE ON webhook_subscriptions
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_rate_limit_windows_updated_at BEFORE UPDATE ON rate_limit_windows
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- =============================================================================
@@ -226,6 +378,13 @@ COMMENT ON TABLE "public"."webhook_subscriptions" IS 'Microsoft Graph webhook su
 COMMENT ON COLUMN "public"."webhook_subscriptions"."subscription_id" IS 'Microsoft Graph subscription identifier';
 COMMENT ON COLUMN "public"."webhook_subscriptions"."expiration_date" IS 'Subscription expiration timestamp';
 
+-- Monitoring tables comments
+COMMENT ON TABLE "public"."cost_records" IS 'Records of OpenRouter API costs for AI operations';
+COMMENT ON TABLE "public"."performance_metrics" IS 'Performance metrics for system operations';
+COMMENT ON TABLE "public"."system_metrics" IS 'System-level metrics like CPU, memory usage';
+COMMENT ON TABLE "public"."rate_limit_records" IS 'Records of rate limit checks and blocks';
+COMMENT ON TABLE "public"."rate_limit_windows" IS 'Current rate limit windows and usage counts';
+
 -- =============================================================================
 -- SCHEMA SUMMARY
 -- =============================================================================
@@ -237,6 +396,11 @@ DATABASE SCHEMA OVERVIEW:
 3. opportunity_logs - GDPR-compliant sales opportunity detection logs
 4. emails - Email metadata from Microsoft Graph webhooks
 5. webhook_subscriptions - Microsoft Graph webhook subscription management
+6. cost_records - OpenRouter API cost tracking for AI operations
+7. performance_metrics - System operation performance tracking
+8. system_metrics - System-level metrics (CPU, memory, etc.)
+9. rate_limit_records - Rate limiting activity and blocked requests
+10. rate_limit_windows - Current rate limit usage windows
 
 KEY FEATURES:
 - Row Level Security (RLS) enabled on all tables
@@ -255,4 +419,5 @@ MIGRATION HISTORY:
 - 006: Table recreation with improved structure
 - 007: Additional webhook subscription columns
 - 008: Webhook subscription column fixes
+- 009: Monitoring tables (cost_records, performance_metrics, system_metrics, rate_limit_records, rate_limit_windows)
 */ 

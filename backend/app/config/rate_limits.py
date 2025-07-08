@@ -1,310 +1,414 @@
 """
 Rate Limiting Configuration
 
-This module provides rate limiting for API endpoints and AI operations.
+This module provides rate limiting functionality for API operations.
 """
 
 import time
-import asyncio
+import os
 from datetime import datetime, timedelta
 from typing import Dict, Any, Optional, List
 from dataclasses import dataclass
 import logging
 from app.monitoring.agent_logger import agent_logger
+from app.lib.supabase_client import supabase_manager
 
 logger = logging.getLogger(__name__)
 
 
 @dataclass
-class RateLimit:
-    """Rate limit configuration"""
+class RateLimitConfig:
+    """Rate limit configuration for an operation"""
 
+    operation: str
     max_requests: int
     window_seconds: int
     description: str
 
 
 @dataclass
-class RateLimitRecord:
-    """Record of a rate-limited request"""
+class RateLimitStatus:
+    """Current rate limit status"""
 
-    timestamp: float
-    user_id: Optional[str]
     operation: str
-    correlation_id: str
+    user_id: Optional[str]
+    requests_in_window: int
+    max_requests: int
+    window_seconds: int
+    remaining_requests: int
+    window_resets_at: str
+    description: str
 
 
 class RateLimiter:
-    """Rate limiter for API operations"""
+    """Rate limiting implementation with database persistence"""
 
     def __init__(self):
         self.rate_limits = self._initialize_rate_limits()
-        self.request_records: Dict[str, List[RateLimitRecord]] = {}
 
-    def _initialize_rate_limits(self) -> Dict[str, RateLimit]:
+    def _initialize_rate_limits(self) -> Dict[str, RateLimitConfig]:
         """Initialize rate limit configurations"""
         return {
-            # AI Analysis rate limits
-            "ai_analysis_per_minute": RateLimit(
+            "ai_analysis_per_minute": RateLimitConfig(
+                operation="ai_analysis_per_minute",
                 max_requests=10,
                 window_seconds=60,
                 description="AI analysis requests per minute per user",
             ),
-            "ai_analysis_per_hour": RateLimit(
+            "ai_analysis_per_hour": RateLimitConfig(
+                operation="ai_analysis_per_hour",
                 max_requests=100,
                 window_seconds=3600,
                 description="AI analysis requests per hour per user",
             ),
-            "ai_analysis_per_day": RateLimit(
+            "ai_analysis_per_day": RateLimitConfig(
+                operation="ai_analysis_per_day",
                 max_requests=1000,
                 window_seconds=86400,
                 description="AI analysis requests per day per user",
             ),
-            # Webhook rate limits
-            "webhook_processing_per_minute": RateLimit(
+            "webhook_processing_per_minute": RateLimitConfig(
+                operation="webhook_processing_per_minute",
                 max_requests=30,
                 window_seconds=60,
                 description="Webhook processing requests per minute per user",
             ),
-            "webhook_processing_per_hour": RateLimit(
+            "webhook_processing_per_hour": RateLimitConfig(
+                operation="webhook_processing_per_hour",
                 max_requests=300,
                 window_seconds=3600,
                 description="Webhook processing requests per hour per user",
             ),
-            # Pipedrive API rate limits
-            "pipedrive_api_per_minute": RateLimit(
+            "pipedrive_api_per_minute": RateLimitConfig(
+                operation="pipedrive_api_per_minute",
                 max_requests=20,
                 window_seconds=60,
                 description="Pipedrive API calls per minute per user",
             ),
-            "pipedrive_api_per_hour": RateLimit(
+            "pipedrive_api_per_hour": RateLimitConfig(
+                operation="pipedrive_api_per_hour",
                 max_requests=200,
                 window_seconds=3600,
                 description="Pipedrive API calls per hour per user",
             ),
-            # Global rate limits
-            "global_requests_per_minute": RateLimit(
+            "global_requests_per_minute": RateLimitConfig(
+                operation="global_requests_per_minute",
                 max_requests=100,
                 window_seconds=60,
                 description="Global requests per minute",
             ),
-            "global_requests_per_hour": RateLimit(
+            "global_requests_per_hour": RateLimitConfig(
+                operation="global_requests_per_hour",
                 max_requests=1000,
                 window_seconds=3600,
                 description="Global requests per hour",
             ),
         }
 
-    def _get_user_key(self, user_id: Optional[str], operation: str) -> str:
-        """Generate a key for user-specific rate limiting"""
-        if user_id:
-            return f"user:{user_id}:{operation}"
-        else:
-            return f"global:{operation}"
-
-    def _cleanup_old_records(self, operation: str, window_seconds: int):
-        """Remove old rate limit records"""
-        current_time = time.time()
-        cutoff_time = current_time - window_seconds
-
-        # Clean up user-specific records
-        keys_to_remove = []
-        for key, records in self.request_records.items():
-            if operation in key:
-                # Filter out old records
-                self.request_records[key] = [
-                    record for record in records if record.timestamp > cutoff_time
-                ]
-                # Remove empty lists
-                if not self.request_records[key]:
-                    keys_to_remove.append(key)
-
-        for key in keys_to_remove:
-            del self.request_records[key]
-
-    def check_rate_limit(
+    async def check_rate_limit(
         self,
         operation: str,
         user_id: Optional[str] = None,
+        ip_address: Optional[str] = None,
+        user_agent: Optional[str] = None,
         correlation_id: Optional[str] = None,
-    ) -> Dict[str, Any]:
+    ) -> bool:
         """Check if a request is within rate limits"""
         if operation not in self.rate_limits:
             logger.warning(f"Unknown rate limit operation: {operation}")
-            return {"allowed": True, "reason": "No rate limit configured"}
+            return True
 
-        rate_limit = self.rate_limits[operation]
-        user_key = self._get_user_key(user_id, operation)
+        config = self.rate_limits[operation]
+        now = datetime.utcnow()
+        window_start = now.replace(microsecond=0)
+        window_end = window_start + timedelta(seconds=config.window_seconds)
 
-        # Clean up old records
-        self._cleanup_old_records(operation, rate_limit.window_seconds)
-
-        # Get current records for this user/operation
-        current_records = self.request_records.get(user_key, [])
-        current_time = time.time()
-
-        # Count requests in the current window
-        window_start = current_time - rate_limit.window_seconds
-        requests_in_window = len(
-            [record for record in current_records if record.timestamp > window_start]
-        )
-
-        # Check if limit is exceeded
-        if requests_in_window >= rate_limit.max_requests:
-            # Calculate when the next request will be allowed
-            oldest_record = min(current_records, key=lambda r: r.timestamp)
-            next_allowed_time = oldest_record.timestamp + rate_limit.window_seconds
-            wait_time = max(0, next_allowed_time - current_time)
-
-            agent_logger.warning(
-                f"Rate limit exceeded for {operation}",
-                {
-                    "operation": "rate_limit_exceeded",
-                    "user_id": user_id,
-                    "operation_type": operation,
-                    "requests_in_window": requests_in_window,
-                    "max_requests": rate_limit.max_requests,
-                    "window_seconds": rate_limit.window_seconds,
-                    "wait_time_seconds": wait_time,
-                    "correlation_id": correlation_id,
-                },
+        try:
+            # Get or create rate limit window
+            window_data = await self._get_or_create_window(
+                operation,
+                user_id,
+                window_start,
+                window_end,
+                config.max_requests,
+                config.window_seconds,
             )
 
-            return {
-                "allowed": False,
-                "reason": f"Rate limit exceeded: {requests_in_window}/{rate_limit.max_requests} requests in {rate_limit.window_seconds}s",
-                "requests_in_window": requests_in_window,
-                "max_requests": rate_limit.max_requests,
-                "window_seconds": rate_limit.window_seconds,
-                "wait_time_seconds": wait_time,
-                "next_allowed_time": datetime.fromtimestamp(
-                    next_allowed_time
-                ).isoformat(),
+            # Check if limit is exceeded
+            is_blocked = window_data["requests_count"] >= config.max_requests
+
+            # Record the rate limit check
+            await self._record_rate_limit_check(
+                operation, user_id, ip_address, user_agent, correlation_id, is_blocked
+            )
+
+            if is_blocked:
+                agent_logger.warning(
+                    f"Rate limit exceeded for {operation}",
+                    {
+                        "operation": "rate_limiting",
+                        "rate_limit_operation": operation,
+                        "user_id": user_id,
+                        "requests_count": window_data["requests_count"],
+                        "max_requests": config.max_requests,
+                        "correlation_id": correlation_id,
+                    },
+                )
+                return False
+
+            # Increment request count
+            await self._increment_request_count(window_data["id"])
+
+            return True
+
+        except Exception as e:
+            logger.error(f"Error checking rate limit: {str(e)}")
+            # Allow request to proceed if rate limiting fails
+            return True
+
+    async def _get_or_create_window(
+        self,
+        operation: str,
+        user_id: Optional[str],
+        window_start: datetime,
+        window_end: datetime,
+        max_requests: int,
+        window_seconds: int,
+    ) -> Dict[str, Any]:
+        """Get or create a rate limit window in the database"""
+        try:
+            # Try to get existing window
+            query = (
+                supabase_manager.client.table("rate_limit_windows")
+                .select("*")
+                .eq("operation", operation)
+                .eq("window_start", window_start.isoformat())
+            )
+
+            if user_id:
+                query = query.eq("user_id", user_id)
+            else:
+                query = query.is_("user_id", "null")
+
+            result = query.execute()
+
+            if result.data:
+                return result.data[0]
+
+            # Create new window
+            window_data = {
+                "operation": operation,
+                "user_id": user_id,
+                "window_start": window_start.isoformat(),
+                "window_end": window_end.isoformat(),
+                "requests_count": 0,
+                "max_requests": max_requests,
+                "window_seconds": window_seconds,
             }
 
-        # Record this request
-        record = RateLimitRecord(
-            timestamp=current_time,
-            user_id=user_id,
-            operation=operation,
-            correlation_id=correlation_id or "unknown",
-        )
+            result = (
+                supabase_manager.client.table("rate_limit_windows")
+                .insert(window_data)
+                .execute()
+            )
+            return result.data[0]
 
-        if user_key not in self.request_records:
-            self.request_records[user_key] = []
+        except Exception as e:
+            logger.error(f"Error getting/creating rate limit window: {str(e)}")
+            # Return a default window if database fails
+            return {
+                "id": "default",
+                "operation": operation,
+                "user_id": user_id,
+                "window_start": window_start.isoformat(),
+                "window_end": window_end.isoformat(),
+                "requests_count": 0,
+                "max_requests": max_requests,
+                "window_seconds": window_seconds,
+            }
 
-        self.request_records[user_key].append(record)
+    async def _increment_request_count(self, window_id: str):
+        """Increment the request count for a window"""
+        try:
+            supabase_manager.client.table("rate_limit_windows").update(
+                {"requests_count": supabase_manager.client.rpc("increment", {"x": 1})}
+            ).eq("id", window_id).execute()
+        except Exception as e:
+            logger.error(f"Error incrementing request count: {str(e)}")
 
-        return {
-            "allowed": True,
-            "reason": "Within rate limits",
-            "requests_in_window": requests_in_window + 1,
-            "max_requests": rate_limit.max_requests,
-            "window_seconds": rate_limit.window_seconds,
-        }
+    async def _record_rate_limit_check(
+        self,
+        operation: str,
+        user_id: Optional[str],
+        ip_address: Optional[str],
+        user_agent: Optional[str],
+        correlation_id: Optional[str],
+        was_blocked: bool,
+    ):
+        """Record a rate limit check in the database"""
+        try:
+            supabase_manager.client.table("rate_limit_records").insert(
+                {
+                    "operation": operation,
+                    "user_id": user_id,
+                    "ip_address": ip_address,
+                    "user_agent": user_agent,
+                    "correlation_id": correlation_id or "unknown",
+                    "was_blocked": was_blocked,
+                }
+            ).execute()
+        except Exception as e:
+            logger.error(f"Error recording rate limit check: {str(e)}")
 
-    def get_rate_limit_status(
+    async def get_rate_limit_status(
         self, operation: str, user_id: Optional[str] = None
-    ) -> Dict[str, Any]:
+    ) -> RateLimitStatus:
         """Get current rate limit status for an operation"""
         if operation not in self.rate_limits:
-            return {"error": f"Unknown operation: {operation}"}
+            raise ValueError(f"Unknown rate limit operation: {operation}")
 
-        rate_limit = self.rate_limits[operation]
-        user_key = self._get_user_key(user_id, operation)
+        config = self.rate_limits[operation]
+        now = datetime.utcnow()
+        window_start = now.replace(microsecond=0)
+        window_end = window_start + timedelta(seconds=config.window_seconds)
 
-        # Clean up old records
-        self._cleanup_old_records(operation, rate_limit.window_seconds)
+        try:
+            # Get current window
+            window_data = await self._get_or_create_window(
+                operation,
+                user_id,
+                window_start,
+                window_end,
+                config.max_requests,
+                config.window_seconds,
+            )
 
-        # Get current records
-        current_records = self.request_records.get(user_key, [])
-        current_time = time.time()
-        window_start = current_time - rate_limit.window_seconds
+            return RateLimitStatus(
+                operation=operation,
+                user_id=user_id,
+                requests_in_window=window_data["requests_count"],
+                max_requests=config.max_requests,
+                window_seconds=config.window_seconds,
+                remaining_requests=max(
+                    0, config.max_requests - window_data["requests_count"]
+                ),
+                window_resets_at=window_end.isoformat(),
+                description=config.description,
+            )
+        except Exception as e:
+            logger.error(f"Error getting rate limit status: {str(e)}")
+            # Return default status if database fails
+            return RateLimitStatus(
+                operation=operation,
+                user_id=user_id,
+                requests_in_window=0,
+                max_requests=config.max_requests,
+                window_seconds=config.window_seconds,
+                remaining_requests=config.max_requests,
+                window_resets_at=window_end.isoformat(),
+                description=config.description,
+            )
 
-        requests_in_window = len(
-            [record for record in current_records if record.timestamp > window_start]
-        )
-
-        return {
-            "operation": operation,
-            "user_id": user_id,
-            "requests_in_window": requests_in_window,
-            "max_requests": rate_limit.max_requests,
-            "window_seconds": rate_limit.window_seconds,
-            "remaining_requests": max(0, rate_limit.max_requests - requests_in_window),
-            "window_resets_at": datetime.fromtimestamp(
-                window_start + rate_limit.window_seconds
-            ).isoformat(),
-            "description": rate_limit.description,
-        }
-
-    def get_all_rate_limits_status(
+    async def get_all_rate_limits_status(
         self, user_id: Optional[str] = None
-    ) -> Dict[str, Any]:
+    ) -> Dict[str, Dict[str, Any]]:
         """Get status for all rate limits"""
-        status = {}
+        status_dict = {}
 
         for operation in self.rate_limits.keys():
-            status[operation] = self.get_rate_limit_status(operation, user_id)
+            try:
+                status = await self.get_rate_limit_status(operation, user_id)
+                status_dict[operation] = {
+                    "operation": status.operation,
+                    "user_id": status.user_id,
+                    "requests_in_window": status.requests_in_window,
+                    "max_requests": status.max_requests,
+                    "window_seconds": status.window_seconds,
+                    "remaining_requests": status.remaining_requests,
+                    "window_resets_at": status.window_resets_at,
+                    "description": status.description,
+                }
+            except Exception as e:
+                logger.error(f"Error getting status for {operation}: {str(e)}")
+                # Add default status for failed operations
+                config = self.rate_limits[operation]
+                status_dict[operation] = {
+                    "operation": operation,
+                    "user_id": user_id,
+                    "requests_in_window": 0,
+                    "max_requests": config.max_requests,
+                    "window_seconds": config.window_seconds,
+                    "remaining_requests": config.max_requests,
+                    "window_resets_at": (
+                        datetime.utcnow() + timedelta(seconds=config.window_seconds)
+                    ).isoformat(),
+                    "description": config.description,
+                }
 
-        return status
+        return status_dict
 
-    def reset_rate_limits(
+    async def get_blocked_requests(self, hours: int = 24) -> List[Dict[str, Any]]:
+        """Get blocked requests from the last N hours"""
+        end_time = datetime.utcnow()
+        start_time = end_time - timedelta(hours=hours)
+
+        try:
+            result = (
+                supabase_manager.client.table("rate_limit_records")
+                .select("*")
+                .eq("was_blocked", True)
+                .gte("timestamp", start_time.isoformat())
+                .lte("timestamp", end_time.isoformat())
+                .order("timestamp", desc=True)
+                .execute()
+            )
+
+            return [
+                {
+                    "operation": record["operation"],
+                    "user_id": record["user_id"],
+                    "timestamp": record["timestamp"],
+                    "ip_address": record["ip_address"],
+                    "user_agent": record["user_agent"],
+                    "correlation_id": record["correlation_id"],
+                }
+                for record in result.data
+            ]
+        except Exception as e:
+            logger.error(f"Error getting blocked requests: {str(e)}")
+            return []
+
+    async def reset_rate_limits(
         self, user_id: Optional[str] = None, operation: Optional[str] = None
     ):
-        """Reset rate limits for a user or operation"""
-        if user_id and operation:
-            # Reset specific user/operation
-            user_key = self._get_user_key(user_id, operation)
-            if user_key in self.request_records:
-                del self.request_records[user_key]
-                logger.info(
-                    f"Reset rate limits for user {user_id}, operation {operation}"
-                )
-        elif user_id:
-            # Reset all operations for user
-            keys_to_remove = [
-                key for key in self.request_records.keys() if f"user:{user_id}:" in key
-            ]
-            for key in keys_to_remove:
-                del self.request_records[key]
-            logger.info(f"Reset all rate limits for user {user_id}")
-        elif operation:
-            # Reset all users for operation
-            keys_to_remove = [
-                key for key in self.request_records.keys() if operation in key
-            ]
-            for key in keys_to_remove:
-                del self.request_records[key]
-            logger.info(f"Reset all rate limits for operation {operation}")
-        else:
-            # Reset all rate limits
-            self.request_records.clear()
-            logger.info("Reset all rate limits")
+        """Reset rate limits for a user and/or operation"""
+        try:
+            # Clear rate limit windows
+            query = supabase_client.table("rate_limit_windows").delete()
+
+            if user_id:
+                query = query.eq("user_id", user_id)
+            if operation:
+                query = query.eq("operation", operation)
+
+            await query.execute()
+
+            agent_logger.info(
+                f"Rate limits reset for user: {user_id or 'all'}, operation: {operation or 'all'}"
+            )
+        except Exception as e:
+            logger.error(f"Error resetting rate limits: {str(e)}")
+
+    async def cleanup_expired_windows(self):
+        """Clean up expired rate limit windows"""
+        try:
+            now = datetime.utcnow()
+            await supabase_client.table("rate_limit_windows").delete().lt(
+                "window_end", now.isoformat()
+            ).execute()
+        except Exception as e:
+            logger.error(f"Error cleaning up expired windows: {str(e)}")
 
 
-# Global rate limiter instance
+# Create singleton instance
 rate_limiter = RateLimiter()
-
-
-# Decorator for rate limiting
-def rate_limit(operation: str, user_id_param: str = "user_id"):
-    """Decorator to apply rate limiting to functions"""
-
-    def decorator(func):
-        async def wrapper(*args, **kwargs):
-            # Extract user_id from function parameters
-            user_id = kwargs.get(user_id_param)
-
-            # Check rate limit
-            limit_check = rate_limiter.check_rate_limit(operation, user_id)
-
-            if not limit_check["allowed"]:
-                raise Exception(f"Rate limit exceeded: {limit_check['reason']}")
-
-            # Call the original function
-            return await func(*args, **kwargs)
-
-        return wrapper
-
-    return decorator

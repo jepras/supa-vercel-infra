@@ -1,10 +1,9 @@
 "use client"
 
-import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { apiClient } from "@/lib/api"
+import { useMonitoring } from './monitoring-context'
 
 interface PerformanceSummary {
   period_hours: number
@@ -62,57 +61,10 @@ interface FailedOperation {
 }
 
 export function PerformanceMonitor() {
-  const [performanceSummary, setPerformanceSummary] = useState<PerformanceSummary | null>(null)
-  const [systemHealth, setSystemHealth] = useState<SystemHealth | null>(null)
-  const [slowestOperations, setSlowestOperations] = useState<SlowestOperation[]>([])
-  const [failedOperations, setFailedOperations] = useState<FailedOperation[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  const fetchPerformanceData = async () => {
-    try {
-      setLoading(true)
-      setError(null)
-
-      // Fetch performance summary
-      const summaryResponse = await apiClient.getPerformanceSummary(24)
-      if (summaryResponse.data) {
-        setPerformanceSummary(summaryResponse.data)
-      }
-
-      // Fetch system health
-      const healthResponse = await apiClient.getSystemHealth()
-      if (healthResponse.data) {
-        setSystemHealth(healthResponse.data)
-      }
-
-      // Fetch slowest operations
-      const slowestResponse = await apiClient.getSlowestOperations(5)
-      if (slowestResponse.data?.slowest_operations) {
-        setSlowestOperations(slowestResponse.data.slowest_operations)
-      }
-
-      // Fetch failed operations
-      const failedResponse = await apiClient.getFailedOperations(24)
-      if (failedResponse.data?.failed_operations) {
-        setFailedOperations(failedResponse.data.failed_operations)
-      }
-
-    } catch (err) {
-      console.error("Error fetching performance data:", err)
-      setError("Failed to load performance data. Please check if the backend server is running.")
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    fetchPerformanceData()
-    
-    // Refresh every 30 seconds
-    const interval = setInterval(fetchPerformanceData, 30000)
-    return () => clearInterval(interval)
-  }, [])
+  const { data, loading, error } = useMonitoring()
+  const performanceSummary = data?.performanceSummary
+  const slowestOperations = data?.slowestOperations
+  const failedOperations = data?.failedOperations
 
   if (loading) {
     return (
@@ -160,9 +112,9 @@ export function PerformanceMonitor() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            {getHealthStatusIcon(systemHealth?.status || "unknown")} System Health
-            <Badge variant="outline" className={getHealthStatusColor(systemHealth?.status || "unknown")}>
-              {systemHealth?.health_score || 0}/100
+            {getHealthStatusIcon(data?.systemHealth?.status || "unknown")} System Health
+            <Badge variant="outline" className={getHealthStatusColor(data?.systemHealth?.status || "unknown")}>
+              {data?.systemHealth?.health_score || 0}/100
             </Badge>
           </CardTitle>
           <CardDescription>
@@ -249,10 +201,10 @@ export function PerformanceMonitor() {
               <CardDescription>Operations with longest response times</CardDescription>
             </CardHeader>
             <CardContent>
-              {slowestOperations.length > 0 ? (
+              {slowestOperations && slowestOperations.length > 0 ? (
                 <div className="space-y-3">
-                  {slowestOperations.map((op, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
+                  {slowestOperations.map((op: any, idx: number) => (
+                    <div key={idx} className="flex items-center justify-between p-3 border rounded-lg">
                       <div className="flex-1">
                         <div className="font-medium">{op.operation}</div>
                         <div className="text-sm text-muted-foreground">
@@ -284,10 +236,10 @@ export function PerformanceMonitor() {
               <CardDescription>Operations that failed in the last 24 hours</CardDescription>
             </CardHeader>
             <CardContent>
-              {failedOperations.length > 0 ? (
+              {failedOperations && failedOperations.length > 0 ? (
                 <div className="space-y-3">
-                  {failedOperations.map((op, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 border rounded-lg border-red-200 bg-red-50">
+                  {failedOperations.map((op: any, idx: number) => (
+                    <div key={idx} className="flex items-center justify-between p-3 border rounded-lg border-red-200 bg-red-50">
                       <div className="flex-1">
                         <div className="font-medium text-red-800">{op.operation}</div>
                                                  <div className="text-sm text-red-600">

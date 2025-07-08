@@ -264,6 +264,10 @@ This document breaks down the Next.js Frontend + Railway Python Backend SaaS app
 - [x] Add real-time opportunity detection logs
 - [x] Implement log export functionality
 - [x] Add loading states for real-time data
+- [x] Create comprehensive Logs dashboard with opportunity logs and activity logs
+- [x] Implement pagination for large log datasets
+- [x] Add detailed field display including confidence scores and analysis outcomes
+- [x] Create unified logs view with proper data organization
 
 #### Verification:
 - [x] Logs display correctly
@@ -271,6 +275,11 @@ This document breaks down the Next.js Frontend + Railway Python Backend SaaS app
 - [x] Filtering and search work
 - [x] Live updates function properly
 - [x] Export functionality works
+- [x] Logs dashboard shows both opportunity logs and activity logs
+- [x] Pagination works for large datasets
+- [x] Detailed fields are displayed properly
+- [x] Opportunity logs show contact and deal information
+- [x] Activity logs show analysis outcomes and status
 
 ## Phase 5: Webhooks & AI Processing
 
@@ -415,29 +424,22 @@ This document breaks down the Next.js Frontend + Railway Python Backend SaaS app
 - [x] **Non-opportunities**: Support emails correctly not logged
 - [x] **Deal Creation**: Only actual Pipedrive deal creation triggers logging
 
-##### Phase 2B: Webhook Integration - PLANNED 📋
-**Goal**: Connect production modules to existing webhook pipeline
+##### Phase 2B: Production Webhook Integration - FINAL TASK 📋
+**Goal**: Connect AI analysis agents to webhook pipeline for end-to-end functionality
 
 ###### Tasks:
-- [ ] Connect AI analysis to existing webhook pipeline (`/api/webhooks/microsoft/email`)
-- [ ] Implement structured logging with correlation IDs
-- [ ] Add comprehensive error handling and retry logic
-- [ ] Create frontend email display component
-- [ ] Implement real-time AI analysis results in dashboard
-- [ ] Add monitoring and performance tracking
-- [ ] Implement rate limiting and cost controls for OpenRouter
-- [ ] Add model switching capabilities in production
-- [ ] Create cost monitoring dashboard
+- [ ] Integrate AI agents (`orchestrator.py`, `analyze_email.py`, `pipedrive_manager.py`) into webhook endpoint (`/api/webhooks/microsoft/email`)
+- [ ] Implement Pipedrive token refresh logic for long-term authentication
+- [ ] Add structured logging with correlation IDs for webhook processing
+- [ ] Implement comprehensive error handling and retry logic
+- [ ] Add rate limiting and cost controls for OpenRouter API
+- [ ] Test end-to-end flow: Email → AI Analysis → Pipedrive Deal Creation
 
-###### Additional Files for Phase 2B:
-- [ ] `src/components/email-viewer.tsx`
-- [ ] `src/components/ai-analysis.tsx`
-- [ ] `src/components/deal-status.tsx`
-- [ ] `src/components/cost-monitor.tsx` (OpenRouter cost monitoring)
-- [ ] `backend/app/monitoring/metrics.py` (performance tracking)
-- [ ] `backend/app/monitoring/cost_tracker.py` (OpenRouter cost monitoring)
-- [ ] `backend/app/config/rate_limits.py` (API rate limiting)
-- [ ] `backend/app/config/ai_models.py` (model management)
+###### Files to Modify:
+- [ ] `backend/app/webhooks/microsoft.py` (integrate AI agents)
+- [ ] `backend/app/oauth/pipedrive.py` (add token refresh)
+- [ ] `backend/app/config/rate_limits.py` (OpenRouter rate limiting)
+- [ ] `backend/app/config/ai_models.py` (production model config)
 
 #### Manual Intervention Required:
 - [x] Obtain OpenRouter API key
@@ -460,12 +462,12 @@ This document breaks down the Next.js Frontend + Railway Python Backend SaaS app
 - [x] Opportunity logging only tracks deals actually created (GDPR compliant)
 - [x] Email hash deduplication prevents duplicate processing
 - [x] Complete deal metadata stored including titles and IDs
-- [ ] Real-time updates work in dashboard
-- [ ] Performance metrics are tracked and displayed
-- [ ] Rate limiting prevents API abuse
-- [ ] Cost monitoring shows OpenRouter usage and costs
-- [ ] Model switching works correctly in production
+- [ ] Webhook triggers AI analysis automatically
+- [ ] AI analysis creates deals in Pipedrive for opportunities
+- [ ] Token refresh works for long-term Pipedrive authentication
+- [ ] Rate limiting prevents OpenRouter API abuse
 - [ ] Cost controls prevent excessive spending
+- [ ] End-to-end flow works: Email → Analysis → Deal Creation
 - [x] GDPR compliance: No email storage for non-opportunities
 - [x] Only opportunity data stored in database
 - [x] Existing deals detected but never updated

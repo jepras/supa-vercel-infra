@@ -1,7 +1,7 @@
 """
-Performance Metrics Tracking
+Performance Metrics Tracker
 
-This module tracks performance metrics for AI operations and system monitoring.
+This module tracks performance metrics for system operations and provides analytics.
 """
 
 import time
@@ -11,6 +11,7 @@ from typing import Dict, Any, Optional, List
 from dataclasses import dataclass, asdict
 import logging
 from app.monitoring.agent_logger import agent_logger
+from app.lib.supabase_client import supabase_manager
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +22,7 @@ class PerformanceMetric:
 
     timestamp: str
     operation: str
-    duration_ms: float
+    duration_ms: int
     success: bool
     correlation_id: str
     user_id: Optional[str] = None
@@ -30,33 +31,33 @@ class PerformanceMetric:
 
 @dataclass
 class SystemMetric:
-    """System-level metric"""
+    """System-level metric record"""
 
     timestamp: str
-    metric_type: str
-    value: float
-    unit: str
-    metadata: Dict[str, Any] = None
+    metric_name: str
+    metric_value: float
+    metric_unit: str
 
 
 class MetricsTracker:
-    """Tracks performance and system metrics"""
+    """Tracks and analyzes performance metrics"""
 
     def __init__(self):
-        self.performance_metrics: List[PerformanceMetric] = []
-        self.system_metrics: List[SystemMetric] = []
         self.operation_stats = {}
 
-    def record_performance(
+    async def record_performance(
         self,
         operation: str,
-        duration_ms: float,
+        duration_ms: int,
         success: bool,
         correlation_id: str,
         user_id: Optional[str] = None,
         metadata: Optional[Dict[str, Any]] = None,
     ) -> PerformanceMetric:
-        """Record a performance metric"""
+        """Record a performance metric to the database"""
+        if metadata is None:
+            metadata = {}
+
         metric = PerformanceMetric(
             timestamp=datetime.utcnow().isoformat(),
             operation=operation,
@@ -64,39 +65,29 @@ class MetricsTracker:
             success=success,
             correlation_id=correlation_id,
             user_id=user_id,
-            metadata=metadata or {},
+            metadata=metadata,
         )
 
-        self.performance_metrics.append(metric)
-
-        # Update operation statistics
-        if operation not in self.operation_stats:
-            self.operation_stats[operation] = {
-                "total_calls": 0,
-                "successful_calls": 0,
-                "failed_calls": 0,
-                "total_duration_ms": 0,
-                "avg_duration_ms": 0,
-                "min_duration_ms": float("inf"),
-                "max_duration_ms": 0,
-            }
-
-        stats = self.operation_stats[operation]
-        stats["total_calls"] += 1
-        stats["total_duration_ms"] += duration_ms
-
-        if success:
-            stats["successful_calls"] += 1
-        else:
-            stats["failed_calls"] += 1
-
-        stats["avg_duration_ms"] = stats["total_duration_ms"] / stats["total_calls"]
-        stats["min_duration_ms"] = min(stats["min_duration_ms"], duration_ms)
-        stats["max_duration_ms"] = max(stats["max_duration_ms"], duration_ms)
+        # Store in database
+        try:
+            supabase_manager.client.table("performance_metrics").insert(
+                {
+                    "timestamp": metric.timestamp,
+                    "operation": metric.operation,
+                    "duration_ms": metric.duration_ms,
+                    "success": metric.success,
+                    "correlation_id": metric.correlation_id,
+                    "user_id": metric.user_id,
+                    "metadata": metric.metadata,
+                }
+            ).execute()
+        except Exception as e:
+            logger.error(f"Failed to store performance metric in database: {str(e)}")
+            # Continue execution even if database storage fails
 
         # Log the metric
         agent_logger.info(
-            f"Performance metric recorded: {operation} took {duration_ms:.2f}ms",
+            f"Performance metric recorded: {operation} took {duration_ms}ms, success={success}",
             {
                 "operation": "performance_tracking",
                 "operation_type": operation,
@@ -110,251 +101,298 @@ class MetricsTracker:
 
         return metric
 
-    def record_system_metric(
-        self,
-        metric_type: str,
-        value: float,
-        unit: str,
-        metadata: Optional[Dict[str, Any]] = None,
+    async def record_system_metric(
+        self, metric_name: str, metric_value: float, metric_unit: str
     ) -> SystemMetric:
-        """Record a system metric"""
+        """Record a system-level metric to the database"""
         metric = SystemMetric(
             timestamp=datetime.utcnow().isoformat(),
-            metric_type=metric_type,
-            value=value,
-            unit=unit,
-            metadata=metadata or {},
+            metric_name=metric_name,
+            metric_value=metric_value,
+            metric_unit=metric_unit,
         )
 
-        self.system_metrics.append(metric)
-
-        # Log the metric
-        agent_logger.info(
-            f"System metric recorded: {metric_type} = {value} {unit}",
-            {
-                "operation": "system_metrics",
-                "metric_type": metric_type,
-                "value": value,
-                "unit": unit,
-                "metadata": metadata,
-            },
-        )
+        # Store in database
+        try:
+            supabase_manager.client.table("system_metrics").insert(
+                {
+                    "timestamp": metric.timestamp,
+                    "metric_name": metric.metric_name,
+                    "metric_value": metric.metric_value,
+                    "metric_unit": metric.metric_unit,
+                }
+            ).execute()
+        except Exception as e:
+            logger.error(f"Failed to store system metric in database: {str(e)}")
 
         return metric
 
-    def get_operation_stats(self, operation: Optional[str] = None) -> Dict[str, Any]:
-        """Get performance statistics for operations"""
-        if operation:
-            return self.operation_stats.get(operation, {})
-        else:
-            return self.operation_stats
+    async def get_performance_summary(self, hours: int = 24) -> Dict[str, Any]:
+        """Get performance summary for the last N hours from database"""
+        end_time = datetime.utcnow()
+        start_time = end_time - timedelta(hours=hours)
 
-    def get_performance_summary(self, hours: int = 24) -> Dict[str, Any]:
-        """Get performance summary for the last N hours"""
-        cutoff_time = datetime.utcnow() - timedelta(hours=hours)
-
-        # Filter recent metrics
-        recent_metrics = [
-            metric
-            for metric in self.performance_metrics
-            if datetime.fromisoformat(metric.timestamp) > cutoff_time
-        ]
-
-        if not recent_metrics:
-            return {"error": "No metrics found for the specified time period"}
-
-        # Calculate summary statistics
-        total_operations = len(recent_metrics)
-        successful_operations = len([m for m in recent_metrics if m.success])
-        failed_operations = total_operations - successful_operations
-
-        durations = [m.duration_ms for m in recent_metrics]
-        avg_duration = sum(durations) / len(durations)
-        min_duration = min(durations)
-        max_duration = max(durations)
-
-        # Group by operation
-        operation_breakdown = {}
-        for metric in recent_metrics:
-            if metric.operation not in operation_breakdown:
-                operation_breakdown[metric.operation] = {
-                    "total": 0,
-                    "successful": 0,
-                    "failed": 0,
-                    "avg_duration_ms": 0,
-                    "total_duration_ms": 0,
-                }
-
-            op_stats = operation_breakdown[metric.operation]
-            op_stats["total"] += 1
-            op_stats["total_duration_ms"] += metric.duration_ms
-
-            if metric.success:
-                op_stats["successful"] += 1
-            else:
-                op_stats["failed"] += 1
-
-        # Calculate averages for each operation
-        for op_stats in operation_breakdown.values():
-            op_stats["avg_duration_ms"] = (
-                op_stats["total_duration_ms"] / op_stats["total"]
+        try:
+            result = (
+                supabase_manager.client.table("performance_metrics")
+                .select("*")
+                .gte("timestamp", start_time.isoformat())
+                .lte("timestamp", end_time.isoformat())
+                .execute()
             )
 
-        return {
-            "period_hours": hours,
-            "total_operations": total_operations,
-            "successful_operations": successful_operations,
-            "failed_operations": failed_operations,
-            "success_rate": (
+            metrics = result.data
+
+            if not metrics:
+                return {
+                    "period_hours": hours,
+                    "total_operations": 0,
+                    "successful_operations": 0,
+                    "failed_operations": 0,
+                    "success_rate": 0.0,
+                    "avg_duration_ms": 0.0,
+                    "min_duration_ms": 0.0,
+                    "max_duration_ms": 0.0,
+                    "operation_breakdown": {},
+                }
+
+            # Calculate basic stats
+            total_operations = len(metrics)
+            successful_operations = sum(1 for m in metrics if m["success"])
+            failed_operations = total_operations - successful_operations
+            success_rate = (
                 (successful_operations / total_operations) * 100
                 if total_operations > 0
                 else 0
-            ),
-            "avg_duration_ms": avg_duration,
-            "min_duration_ms": min_duration,
-            "max_duration_ms": max_duration,
-            "operation_breakdown": operation_breakdown,
-        }
+            )
 
-    def get_system_metrics_summary(self, hours: int = 24) -> Dict[str, Any]:
-        """Get system metrics summary for the last N hours"""
-        cutoff_time = datetime.utcnow() - timedelta(hours=hours)
+            durations = [m["duration_ms"] for m in metrics]
+            avg_duration_ms = sum(durations) / len(durations) if durations else 0
+            min_duration_ms = min(durations) if durations else 0
+            max_duration_ms = max(durations) if durations else 0
 
-        # Filter recent metrics
-        recent_metrics = [
-            metric
-            for metric in self.system_metrics
-            if datetime.fromisoformat(metric.timestamp) > cutoff_time
-        ]
+            # Group by operation
+            operation_breakdown = {}
+            for metric in metrics:
+                op = metric["operation"]
+                if op not in operation_breakdown:
+                    operation_breakdown[op] = {
+                        "total": 0,
+                        "successful": 0,
+                        "failed": 0,
+                        "total_duration_ms": 0,
+                        "durations": [],
+                    }
 
-        if not recent_metrics:
-            return {"error": "No system metrics found for the specified time period"}
+                breakdown = operation_breakdown[op]
+                breakdown["total"] += 1
+                breakdown["total_duration_ms"] += metric["duration_ms"]
+                breakdown["durations"].append(metric["duration_ms"])
 
-        # Group by metric type
-        metric_breakdown = {}
-        for metric in recent_metrics:
-            if metric.metric_type not in metric_breakdown:
-                metric_breakdown[metric.metric_type] = {
-                    "values": [],
-                    "unit": metric.unit,
-                    "avg": 0,
-                    "min": float("inf"),
-                    "max": 0,
+                if metric["success"]:
+                    breakdown["successful"] += 1
+                else:
+                    breakdown["failed"] += 1
+
+            # Calculate averages for each operation
+            for op_stats in operation_breakdown.values():
+                if op_stats["durations"]:
+                    op_stats["avg_duration_ms"] = sum(op_stats["durations"]) / len(
+                        op_stats["durations"]
+                    )
+                else:
+                    op_stats["avg_duration_ms"] = 0
+                del op_stats["durations"]  # Remove the list to keep response clean
+
+            return {
+                "period_hours": hours,
+                "total_operations": total_operations,
+                "successful_operations": successful_operations,
+                "failed_operations": failed_operations,
+                "success_rate": success_rate,
+                "avg_duration_ms": avg_duration_ms,
+                "min_duration_ms": min_duration_ms,
+                "max_duration_ms": max_duration_ms,
+                "operation_breakdown": operation_breakdown,
+            }
+        except Exception as e:
+            logger.error(f"Failed to get performance summary from database: {str(e)}")
+            return {
+                "period_hours": hours,
+                "total_operations": 0,
+                "successful_operations": 0,
+                "failed_operations": 0,
+                "success_rate": 0.0,
+                "avg_duration_ms": 0.0,
+                "min_duration_ms": 0.0,
+                "max_duration_ms": 0.0,
+                "operation_breakdown": {},
+            }
+
+    async def get_operation_stats(
+        self, operation: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Get statistics for a specific operation or all operations from database"""
+        try:
+            query = supabase_manager.client.table("performance_metrics").select("*")
+            if operation:
+                query = query.eq("operation", operation)
+
+            result = await query.execute()
+            metrics = result.data
+
+            if not metrics:
+                return {
+                    "operation": operation or "all",
+                    "total_operations": 0,
+                    "success_rate": 0.0,
+                    "avg_duration_ms": 0.0,
+                    "min_duration_ms": 0.0,
+                    "max_duration_ms": 0.0,
                 }
 
-            breakdown = metric_breakdown[metric.metric_type]
-            breakdown["values"].append(metric.value)
-            breakdown["min"] = min(breakdown["min"], metric.value)
-            breakdown["max"] = max(breakdown["max"], metric.value)
+            total_operations = len(metrics)
+            successful_operations = sum(1 for m in metrics if m["success"])
+            success_rate = (
+                (successful_operations / total_operations) * 100
+                if total_operations > 0
+                else 0
+            )
 
-        # Calculate averages
-        for breakdown in metric_breakdown.values():
-            breakdown["avg"] = sum(breakdown["values"]) / len(breakdown["values"])
+            durations = [m["duration_ms"] for m in metrics]
+            avg_duration_ms = sum(durations) / len(durations) if durations else 0
+            min_duration_ms = min(durations) if durations else 0
+            max_duration_ms = max(durations) if durations else 0
 
-        return {"period_hours": hours, "metric_breakdown": metric_breakdown}
+            return {
+                "operation": operation or "all",
+                "total_operations": total_operations,
+                "success_rate": success_rate,
+                "avg_duration_ms": avg_duration_ms,
+                "min_duration_ms": min_duration_ms,
+                "max_duration_ms": max_duration_ms,
+            }
+        except Exception as e:
+            logger.error(f"Failed to get operation stats from database: {str(e)}")
+            return {
+                "operation": operation or "all",
+                "total_operations": 0,
+                "success_rate": 0.0,
+                "avg_duration_ms": 0.0,
+                "min_duration_ms": 0.0,
+                "max_duration_ms": 0.0,
+            }
 
-    def get_slowest_operations(self, limit: int = 10) -> List[Dict[str, Any]]:
-        """Get the slowest operations"""
-        if not self.performance_metrics:
+    async def get_slowest_operations(self, limit: int = 10) -> List[Dict[str, Any]]:
+        """Get the slowest operations from database"""
+        try:
+            result = (
+                supabase_manager.client.table("performance_metrics")
+                .select("*")
+                .order("duration_ms", desc=True)
+                .limit(limit)
+                .execute()
+            )
+
+            return [
+                {
+                    "operation": record["operation"],
+                    "duration_ms": record["duration_ms"],
+                    "success": record["success"],
+                    "timestamp": record["timestamp"],
+                    "correlation_id": record["correlation_id"],
+                    "user_id": record["user_id"],
+                }
+                for record in result.data
+            ]
+        except Exception as e:
+            logger.error(f"Failed to get slowest operations from database: {str(e)}")
             return []
 
-        # Sort by duration (descending)
-        sorted_metrics = sorted(
-            self.performance_metrics, key=lambda m: m.duration_ms, reverse=True
-        )
+    async def get_failed_operations(self, hours: int = 24) -> List[Dict[str, Any]]:
+        """Get failed operations from the last N hours from database"""
+        end_time = datetime.utcnow()
+        start_time = end_time - timedelta(hours=hours)
 
-        # Return top N
-        return [
-            {
-                "operation": metric.operation,
-                "duration_ms": metric.duration_ms,
-                "success": metric.success,
-                "timestamp": metric.timestamp,
-                "correlation_id": metric.correlation_id,
-                "user_id": metric.user_id,
-            }
-            for metric in sorted_metrics[:limit]
-        ]
-
-    def get_failed_operations(self, hours: int = 24) -> List[Dict[str, Any]]:
-        """Get failed operations in the last N hours"""
-        cutoff_time = datetime.utcnow() - timedelta(hours=hours)
-
-        failed_metrics = [
-            metric
-            for metric in self.performance_metrics
-            if (
-                not metric.success
-                and datetime.fromisoformat(metric.timestamp) > cutoff_time
+        try:
+            result = (
+                supabase_manager.client.table("performance_metrics")
+                .select("*")
+                .eq("success", False)
+                .gte("timestamp", start_time.isoformat())
+                .lte("timestamp", end_time.isoformat())
+                .order("timestamp", desc=True)
+                .execute()
             )
-        ]
 
-        return [
-            {
-                "operation": metric.operation,
-                "duration_ms": metric.duration_ms,
-                "timestamp": metric.timestamp,
-                "correlation_id": metric.correlation_id,
-                "user_id": metric.user_id,
-                "metadata": metric.metadata,
-            }
-            for metric in failed_metrics
-        ]
-
-    def export_metrics(self, format: str = "json") -> str:
-        """Export metrics data"""
-        if format.lower() == "json":
-            return json.dumps(
+            return [
                 {
-                    "performance_metrics": [
-                        asdict(metric) for metric in self.performance_metrics
-                    ],
-                    "system_metrics": [
-                        asdict(metric) for metric in self.system_metrics
-                    ],
-                    "operation_stats": self.operation_stats,
-                },
-                indent=2,
-            )
-        else:
-            raise ValueError(f"Unsupported export format: {format}")
+                    "operation": record["operation"],
+                    "duration_ms": record["duration_ms"],
+                    "timestamp": record["timestamp"],
+                    "correlation_id": record["correlation_id"],
+                    "user_id": record["user_id"],
+                    "metadata": record["metadata"],
+                }
+                for record in result.data
+            ]
+        except Exception as e:
+            logger.error(f"Failed to get failed operations from database: {str(e)}")
+            return []
 
-    def clear_old_metrics(self, days_to_keep: int = 30):
-        """Clear metrics older than specified days"""
+    async def get_system_metrics(
+        self, metric_name: Optional[str] = None, hours: int = 24
+    ) -> List[Dict[str, Any]]:
+        """Get system metrics from database"""
+        end_time = datetime.utcnow()
+        start_time = end_time - timedelta(hours=hours)
+
+        try:
+            query = (
+                supabase_manager.client.table("system_metrics")
+                .select("*")
+                .gte("timestamp", start_time.isoformat())
+                .lte("timestamp", end_time.isoformat())
+            )
+            if metric_name:
+                query = query.eq("metric_name", metric_name)
+
+            result = await query.order("timestamp", desc=True).execute()
+
+            return [
+                {
+                    "metric_name": record["metric_name"],
+                    "metric_value": record["metric_value"],
+                    "metric_unit": record["metric_unit"],
+                    "timestamp": record["timestamp"],
+                }
+                for record in result.data
+            ]
+        except Exception as e:
+            logger.error(f"Failed to get system metrics from database: {str(e)}")
+            return []
+
+    async def clear_old_metrics(self, days_to_keep: int = 30):
+        """Clear old metrics from database"""
         cutoff_date = datetime.utcnow() - timedelta(days=days_to_keep)
 
-        # Clear performance metrics
-        original_perf_count = len(self.performance_metrics)
-        self.performance_metrics = [
-            metric
-            for metric in self.performance_metrics
-            if datetime.fromisoformat(metric.timestamp) > cutoff_date
-        ]
+        try:
+            # Clear old performance metrics
+            supabase_manager.client.table("performance_metrics").delete().lt(
+                "timestamp", cutoff_date.isoformat()
+            ).execute()
 
-        # Clear system metrics
-        original_sys_count = len(self.system_metrics)
-        self.system_metrics = [
-            metric
-            for metric in self.system_metrics
-            if datetime.fromisoformat(metric.timestamp) > cutoff_date
-        ]
+            # Clear old system metrics
+            supabase_manager.client.table("system_metrics").delete().lt(
+                "timestamp", cutoff_date.isoformat()
+            ).execute()
 
-        cleared_perf = original_perf_count - len(self.performance_metrics)
-        cleared_sys = original_sys_count - len(self.system_metrics)
-
-        logger.info(
-            f"Cleared {cleared_perf} old performance metrics and {cleared_sys} old system metrics"
-        )
-
-    def reset_metrics(self):
-        """Reset all metrics"""
-        self.performance_metrics.clear()
-        self.system_metrics.clear()
-        self.operation_stats.clear()
-        logger.info("All metrics have been reset")
+            logger.info(f"Cleared metrics older than {days_to_keep} days")
+        except Exception as e:
+            logger.error(f"Failed to clear old metrics: {str(e)}")
 
 
-# Global metrics tracker instance
+# Create singleton instance
 metrics_tracker = MetricsTracker()
 
 
