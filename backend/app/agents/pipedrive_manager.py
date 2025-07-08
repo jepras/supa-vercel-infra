@@ -173,15 +173,6 @@ class PipedriveManager:
             raise
 
     @handle_pipedrive_errors
-    async def test_connection(self) -> bool:
-        """Test if the access token is valid."""
-        try:
-            result = await self._make_api_call("GET", f"{self.base_url}/users/me")
-            return True
-        except Exception:
-            return False
-
-    @handle_pipedrive_errors
     async def search_contact_by_email(self, email: str) -> Optional[Dict[str, Any]]:
         """Search for a contact by email address."""
         try:
@@ -464,43 +455,6 @@ class PipedriveManager:
                 "Open deal check failed", {"error": str(e), "contact_id": contact_id}
             )
             return False
-
-    @handle_pipedrive_errors
-    async def check_for_similar_deals(
-        self, contact_id: int, deal_title: str
-    ) -> List[Dict[str, Any]]:
-        """Check if similar OPEN deals already exist for this contact"""
-        try:
-            result = await self._make_api_call(
-                "GET",
-                f"{self.base_url}/deals",
-                params={"person_id": contact_id, "status": "open"},
-            )
-
-            deals = result.get("data", [])
-
-            # Only consider open deals with similar titles
-            similar_deals = []
-            for deal in deals:
-                if deal.get("status") != "open":
-                    continue
-                existing_title = deal.get("title", "").lower()
-                new_title = deal_title.lower()
-                if any(
-                    word in existing_title
-                    for word in new_title.split()
-                    if len(word) > 3
-                ):
-                    similar_deals.append(deal)
-
-            return similar_deals
-
-        except Exception as e:
-            agent_logger.error(
-                "Similar deals check failed",
-                {"error": str(e), "contact_id": contact_id, "deal_title": deal_title},
-            )
-            return []
 
     @handle_pipedrive_errors
     async def log_note(self, note_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
