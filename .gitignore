@@ -313,9 +313,7 @@ $RECYCLE.BIN/
 .nfs*
 
 # Logs
-logs/
 *.log
-!src/components/logs/
 
 # Temporary files
 *.swp
