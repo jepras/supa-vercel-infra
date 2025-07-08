@@ -61,6 +61,46 @@ class ApiClient {
       method: 'POST',
     })
   }
+
+  // Monitoring endpoints
+  async getCostSummary(days: number = 7): Promise<ApiResponse> {
+    return this.request(`/api/monitoring/costs/summary?days=${days}`)
+  }
+
+  async getDailyCost(): Promise<ApiResponse> {
+    return this.request('/api/monitoring/costs/daily')
+  }
+
+  async getModelUsageStats(): Promise<ApiResponse> {
+    return this.request('/api/monitoring/costs/model-usage')
+  }
+
+  async getPerformanceSummary(hours: number = 24): Promise<ApiResponse> {
+    return this.request(`/api/monitoring/performance/summary?hours=${hours}`)
+  }
+
+  async getSystemHealth(): Promise<ApiResponse> {
+    return this.request('/api/monitoring/system/health')
+  }
+
+  async getRateLimitStatus(operation?: string, userId?: string): Promise<ApiResponse> {
+    const params = new URLSearchParams()
+    if (operation) params.append('operation', operation)
+    if (userId) params.append('user_id', userId)
+    return this.request(`/api/monitoring/rate-limits/status?${params.toString()}`)
+  }
+
+  async getSlowestOperations(limit: number = 5): Promise<ApiResponse> {
+    return this.request(`/api/monitoring/performance/slowest?limit=${limit}`)
+  }
+
+  async getFailedOperations(hours: number = 24): Promise<ApiResponse> {
+    return this.request(`/api/monitoring/performance/failed?hours=${hours}`)
+  }
+
+  async getBlockedRequests(hours: number = 24): Promise<ApiResponse> {
+    return this.request(`/api/monitoring/rate-limits/blocked?hours=${hours}`)
+  }
 }
 
 // Create singleton instance

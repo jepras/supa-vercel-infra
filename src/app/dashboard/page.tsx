@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/components/auth-provider'
 import { ConnectivityTest } from '@/components/connectivity-test'
+import { MonitoringDashboard } from '@/components/monitoring/monitoring-dashboard'
 import { Loader2, Link, Unlink, Bell, BellOff } from 'lucide-react'
 
 interface Integration {
@@ -480,6 +481,7 @@ export default function DashboardPage() {
           <TabsList>
             <TabsTrigger value="integrations">Integrations</TabsTrigger>
             <TabsTrigger value="activity">Activity Logs</TabsTrigger>
+            <TabsTrigger value="monitoring">Monitoring</TabsTrigger>
             <TabsTrigger value="connectivity">Connectivity Test</TabsTrigger>
           </TabsList>
 
@@ -749,6 +751,10 @@ export default function DashboardPage() {
                 )}
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="monitoring" className="space-y-4">
+            <MonitoringDashboard />
           </TabsContent>
 
           <TabsContent value="connectivity" className="space-y-4">

@@ -10,6 +10,7 @@ from app.oauth.pipedrive import router as pipedrive_router
 from app.oauth.microsoft import router as microsoft_router
 from app.webhooks.microsoft import router as microsoft_webhook_router
 from app.api.ai_test import router as ai_test_router
+from app.api.monitoring import router as monitoring_router
 import httpx
 from fastapi import Depends
 from app.auth import get_current_user
@@ -30,6 +31,7 @@ app.include_router(pipedrive_router)
 app.include_router(microsoft_router)
 app.include_router(microsoft_webhook_router)
 app.include_router(ai_test_router, prefix="/api/ai", tags=["ai"])
+app.include_router(monitoring_router)
 
 
 @app.get("/")
