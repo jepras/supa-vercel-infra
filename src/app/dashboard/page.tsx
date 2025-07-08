@@ -38,6 +38,8 @@ export default function DashboardPage() {
   const [webhookSubscriptions, setWebhookSubscriptions] = useState<any[]>([])
   const [isCreatingWebhook, setIsCreatingWebhook] = useState(false)
   const [webhookStatus, setWebhookStatus] = useState<string | null>(null)
+  const [webhookProcessingStatus, setWebhookProcessingStatus] = useState<any>(null)
+  const [isLoadingWebhookStatus, setIsLoadingWebhookStatus] = useState(false)
   const router = useRouter()
   const { user, isLoading: authLoading, signOut } = useAuth()
 
@@ -54,6 +56,7 @@ export default function DashboardPage() {
       checkConnectionStatus()
       checkMicrosoftConnectionStatus()
       fetchWebhookSubscriptions()
+      fetchWebhookProcessingStatus()
       setIsLoading(false)
     }
   }, [user, authLoading, router])
@@ -182,6 +185,40 @@ export default function DashboardPage() {
     } catch (error) {
       console.error('Error fetching webhook subscriptions:', error)
       setWebhookSubscriptions([])
+    }
+  }
+
+  async function fetchWebhookProcessingStatus() {
+    if (!user) return
+    
+    try {
+      setIsLoadingWebhookStatus(true)
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      if (!session?.access_token) {
+        console.error('No session token available for webhook status fetch')
+        return
+      }
+      
+      const response = await fetch(`${BACKEND_URL}/api/webhooks/microsoft/status/${user.id}`, {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        setWebhookProcessingStatus(data)
+      } else {
+        console.error('Failed to fetch webhook processing status:', response.status)
+        setWebhookProcessingStatus(null)
+      }
+    } catch (error) {
+      console.error('Error fetching webhook processing status:', error)
+      setWebhookProcessingStatus(null)
+    } finally {
+      setIsLoadingWebhookStatus(false)
     }
   }
 
@@ -659,6 +696,97 @@ export default function DashboardPage() {
                               : 'bg-red-50 text-red-800 border border-red-200'
                           }`}>
                             {webhookStatus}
+                          </div>
+                        )}
+
+                        {/* Webhook Processing Status Section */}
+                        {webhookSubscriptions.length > 0 && (
+                          <div className="border-t pt-4 mt-4">
+                            <div className="flex items-center justify-between mb-3">
+                              <h4 className="font-medium">Processing Status</h4>
+                              <Button
+                                onClick={fetchWebhookProcessingStatus}
+                                disabled={isLoadingWebhookStatus}
+                                variant="outline"
+                                size="sm"
+                              >
+                                {isLoadingWebhookStatus ? (
+                                  <Loader2 className="h-3 w-3 animate-spin" />
+                                ) : (
+                                  'Refresh'
+                                )}
+                              </Button>
+                            </div>
+                            
+                            {webhookProcessingStatus ? (
+                              <div className="space-y-3">
+                                <div className="grid grid-cols-3 gap-2 text-sm">
+                                  <div className="text-center p-2 bg-blue-50 rounded-md">
+                                    <div className="font-semibold text-blue-600">
+                                      {webhookProcessingStatus.recent_processing?.total_emails || 0}
+                                    </div>
+                                    <div className="text-xs text-blue-500">Total Emails</div>
+                                  </div>
+                                  <div className="text-center p-2 bg-green-50 rounded-md">
+                                    <div className="font-semibold text-green-600">
+                                      {webhookProcessingStatus.recent_processing?.ai_processed || 0}
+                                    </div>
+                                    <div className="text-xs text-green-500">AI Processed</div>
+                                  </div>
+                                  <div className="text-center p-2 bg-purple-50 rounded-md">
+                                    <div className="font-semibold text-purple-600">
+                                      {webhookProcessingStatus.recent_processing?.opportunities_detected || 0}
+                                    </div>
+                                    <div className="text-xs text-purple-500">Opportunities</div>
+                                  </div>
+                                </div>
+                                
+                                {webhookProcessingStatus.recent_processing?.recent_emails && 
+                                 webhookProcessingStatus.recent_processing.recent_emails.length > 0 && (
+                                  <div className="space-y-2">
+                                    <h5 className="text-sm font-medium text-gray-700">Recent Emails</h5>
+                                    {webhookProcessingStatus.recent_processing.recent_emails.slice(0, 3).map((email: any) => (
+                                      <div key={email.id} className="p-2 bg-gray-50 rounded-md text-xs">
+                                        <div className="flex items-center justify-between">
+                                          <div className="flex-1">
+                                            <div className="font-medium truncate">{email.subject || 'No Subject'}</div>
+                                            <div className="text-gray-500 truncate">
+                                              To: {email.recipient_emails?.[0] || 'Unknown'}
+                                            </div>
+                                          </div>
+                                          <div className="flex items-center gap-1 ml-2">
+                                            {email.ai_analyzed && (
+                                              <Badge variant="outline" className="text-xs bg-green-50 text-green-700">
+                                                AI
+                                              </Badge>
+                                            )}
+                                            {email.opportunity_detected && (
+                                              <Badge variant="outline" className="text-xs bg-purple-50 text-purple-700">
+                                                Deal
+                                              </Badge>
+                                            )}
+                                          </div>
+                                        </div>
+                                        <div className="text-gray-400 mt-1">
+                                          {new Date(email.webhook_received_at).toLocaleString()}
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            ) : (
+                              <div className="text-center py-4 text-sm text-gray-500">
+                                {isLoadingWebhookStatus ? (
+                                  <div className="flex items-center justify-center gap-2">
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                    Loading processing status...
+                                  </div>
+                                ) : (
+                                  'No processing data available'
+                                )}
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>

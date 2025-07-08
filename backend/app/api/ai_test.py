@@ -388,11 +388,12 @@ async def test_token_refresh(user_id: str):
             pipedrive_manager = PipedriveManager(user_id)
 
             # Test a simple API call that will trigger token refresh if needed
+            # Use a more reliable endpoint that we know works
             user_info = await pipedrive_manager._make_api_call(
-                "GET", f"{pipedrive_manager.base_url}/users/me"
+                "GET", f"{pipedrive_manager.base_url}/users"
             )
 
-            if user_info:
+            if user_info and user_info.get("data"):
                 summary["pipedrive_status"] = "success"
                 summary["pipedrive_token_valid"] = True
                 results.append(

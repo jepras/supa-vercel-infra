@@ -3,7 +3,7 @@ from fastapi.responses import JSONResponse
 import os
 import json
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict, Any, Optional
 import httpx
 from app.lib.supabase_client import supabase_manager
@@ -80,7 +80,7 @@ class MicrosoftWebhookManager:
                 )
 
             # Calculate expiration date (3 days from now, max allowed by Microsoft)
-            expiration_date = datetime.utcnow() + timedelta(days=3)
+            expiration_date = datetime.now(timezone.utc) + timedelta(days=3)
 
             subscription_data = {
                 "changeType": "created",
@@ -344,6 +344,7 @@ class MicrosoftWebhookManager:
 
             processed_emails = []
             skipped_duplicates = []
+            ai_processed_emails = []
 
             for notification in value:
                 resource = notification.get("resource", "")
@@ -431,7 +432,7 @@ class MicrosoftWebhookManager:
                     "received_at": received_at,
                     "body_content": body_content,
                     "body_content_type": body_content_type,
-                    "webhook_received_at": datetime.utcnow().isoformat(),
+                    "webhook_received_at": datetime.now(timezone.utc).isoformat(),
                     "processing_status": "stored",
                     "content_retrieved": True,
                     "ai_analyzed": False,
@@ -456,6 +457,83 @@ class MicrosoftWebhookManager:
                         logger.info(
                             f"Successfully stored email {message_id} for user {supabase_user_id}"
                         )
+
+                        # Step 2: Trigger AI Agent Flow
+                        try:
+                            # Prepare email data for AI analysis
+                            ai_email_data = {
+                                "id": message_id,
+                                "subject": subject,
+                                "to": (
+                                    recipient_emails[0] if recipient_emails else ""
+                                ),  # Primary recipient
+                                "from": sender_email,
+                                "content": body_content,  # Use 'content' for AI analyzer compatibility
+                                "sent_at": sent_at,
+                                "user_id": supabase_user_id,
+                            }
+
+                            # Import and use AgentOrchestrator
+                            from app.agents.orchestrator import AgentOrchestrator
+
+                            logger.info(f"Starting AI analysis for email {message_id}")
+
+                            # Create orchestrator and process email
+                            orchestrator = AgentOrchestrator(supabase_user_id)
+                            ai_result = await orchestrator.process_email(ai_email_data)
+
+                            # Update email record with AI analysis results
+                            update_data = {
+                                "processing_status": "completed",
+                                "ai_analyzed": True,
+                                "opportunity_detected": ai_result.get(
+                                    "ai_result", {}
+                                ).get("is_sales_opportunity", False),
+                                "updated_at": datetime.now(timezone.utc).isoformat(),
+                            }
+
+                            # Update the email record in database
+                            supabase_manager.client.table("emails").update(
+                                update_data
+                            ).eq("microsoft_email_id", message_id).execute()
+
+                            ai_processed_emails.append(
+                                {
+                                    "message_id": message_id,
+                                    "subject": subject,
+                                    "ai_result": ai_result,
+                                    "status": "ai_processed",
+                                }
+                            )
+
+                            logger.info(
+                                f"AI analysis completed for email {message_id}: {ai_result.get('outcome', 'Unknown')}"
+                            )
+
+                        except Exception as ai_error:
+                            logger.error(
+                                f"AI analysis failed for email {message_id}: {str(ai_error)}"
+                            )
+
+                            # Update email record to mark AI analysis as failed
+                            update_data = {
+                                "processing_status": "ai_failed",
+                                "ai_analyzed": False,
+                                "updated_at": datetime.now(timezone.utc).isoformat(),
+                            }
+
+                            supabase_manager.client.table("emails").update(
+                                update_data
+                            ).eq("microsoft_email_id", message_id).execute()
+
+                            ai_processed_emails.append(
+                                {
+                                    "message_id": message_id,
+                                    "subject": subject,
+                                    "ai_error": str(ai_error),
+                                    "status": "ai_failed",
+                                }
+                            )
                     else:
                         logger.error(f"Failed to store email {message_id} in database")
 
@@ -469,8 +547,10 @@ class MicrosoftWebhookManager:
                 "status": "success",
                 "processed_count": len(processed_emails),
                 "skipped_count": len(skipped_duplicates),
+                "ai_processed_count": len(ai_processed_emails),
                 "processed_emails": processed_emails,
                 "skipped_duplicates": skipped_duplicates,
+                "ai_processed_emails": ai_processed_emails,
             }
 
         except Exception as e:
@@ -679,3 +759,63 @@ async def test_webhook_endpoint():
             "delete_subscription": "/api/webhooks/microsoft/subscriptions/{user_id}/{subscription_id}",
         },
     }
+
+
+@router.get("/status/{user_id}")
+async def get_webhook_processing_status(user_id: str):
+    """Get webhook processing status and recent email processing results"""
+    try:
+        # Get recent emails processed via webhook
+        recent_emails = (
+            supabase_manager.client.table("emails")
+            .select("*")
+            .eq("user_id", user_id)
+            .order("webhook_received_at", desc=True)
+            .limit(10)
+            .execute()
+        )
+
+        # Get webhook subscription status
+        subscriptions = (
+            supabase_manager.client.table("webhook_subscriptions")
+            .select("*")
+            .eq("user_id", user_id)
+            .eq("is_active", True)
+            .execute()
+        )
+
+        # Calculate processing statistics
+        total_emails = len(recent_emails.data) if recent_emails.data else 0
+        ai_processed = (
+            sum(1 for email in recent_emails.data if email.get("ai_analyzed", False))
+            if recent_emails.data
+            else 0
+        )
+        opportunities_detected = (
+            sum(
+                1
+                for email in recent_emails.data
+                if email.get("opportunity_detected", False)
+            )
+            if recent_emails.data
+            else 0
+        )
+
+        return {
+            "status": "success",
+            "user_id": user_id,
+            "webhook_subscriptions": {
+                "active_count": len(subscriptions.data) if subscriptions.data else 0,
+                "subscriptions": subscriptions.data or [],
+            },
+            "recent_processing": {
+                "total_emails": total_emails,
+                "ai_processed": ai_processed,
+                "opportunities_detected": opportunities_detected,
+                "recent_emails": recent_emails.data or [],
+            },
+        }
+
+    except Exception as e:
+        logger.error(f"Error getting webhook processing status: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
