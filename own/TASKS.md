@@ -222,21 +222,31 @@ This document breaks down the Next.js Frontend + Railway Python Backend SaaS app
 
 ## Phase 4: Frontend Dashboard & UI
 
-### 4.1 Dashboard Layout & Navigation
+### 4.1 Dashboard Layout & Navigation - COMPLETED ✅
 **Priority**: Medium | **Manual Intervention**: None | **Estimated Time**: 2-3 hours
 
 #### Tasks:
 - [x] Create main dashboard layout
-- [ ] Implement navigation sidebar/menu
+- [x] Implement navigation with tabs (Integrations, Logs, Monitoring)
 - [x] Create responsive design
-- [ ] Set up routing structure
-- [ ] Implement breadcrumbs
+- [x] Set up routing structure
+- [x] Implement tab-based navigation
+- [x] Remove unused connectivity test tab
+- [x] Add loading states for authentication status
+- [x] Make integration test API calls independent
+- [x] Remove refresh status buttons
+- [x] Make logs cards more compact for better UX
 
 #### Verification:
 - [x] Dashboard loads correctly
 - [x] Navigation works on all screen sizes
-- [ ] Routes are properly configured
+- [x] Routes are properly configured
 - [x] Layout is consistent across pages
+- [x] Tab navigation works smoothly
+- [x] Loading states prevent authentication status flashing
+- [x] Test API calls are independent with separate results
+- [x] No unnecessary refresh buttons
+- [x] Logs display more items per page with compact design
 
 ### 4.2 Integration Management UI - COMPLETED ✅
 **Priority**: Medium | **Manual Intervention**: None | **Estimated Time**: 3-4 hours
@@ -280,6 +290,29 @@ This document breaks down the Next.js Frontend + Railway Python Backend SaaS app
 - [x] Detailed fields are displayed properly
 - [x] Opportunity logs show contact and deal information
 - [x] Activity logs show analysis outcomes and status
+
+### 4.4 UI/UX Improvements - COMPLETED ✅
+**Priority**: Medium | **Manual Intervention**: None | **Estimated Time**: 2-3 hours
+
+#### Tasks:
+- [x] Remove refresh status buttons from integration cards
+- [x] Make test API calls independent (separate loading states and results for Pipedrive and Microsoft)
+- [x] Add loading states for authentication status to prevent "not authenticated" flash
+- [x] Improve OAuth callback loading experience (show loading until auth decision is made)
+- [x] Remove connectivity test tab (no longer useful)
+- [x] Make logs cards more compact to show more items per page
+- [x] Fix background color to use proper theme background instead of hardcoded gray
+- [x] Improve overall user experience with better loading states and feedback
+
+#### Verification:
+- [x] No refresh buttons cluttering the interface
+- [x] Test API calls work independently with separate results
+- [x] Authentication status loads smoothly without flashing
+- [x] OAuth callbacks show proper loading states
+- [x] Interface is cleaner without unused connectivity test
+- [x] Logs display more information per page with compact design
+- [x] Background respects theme settings (dark/light mode)
+- [x] Overall user experience is more polished and responsive
 
 ## Phase 5: Webhooks & AI Processing
 
@@ -691,22 +724,28 @@ This document breaks down the Next.js Frontend + Railway Python Backend SaaS app
 1. **Phase 1**: Project Foundation & Setup (with Railway backend and migrations) ✅
 2. **Phase 2**: Authentication & User Management ✅
 3. **Phase 3**: OAuth Integration Framework (Pipedrive and Microsoft) ✅
-4. **Phase 4**: Real-time Activity Logs & Monitoring ✅
+4. **Phase 4**: Frontend Dashboard & UI (including UI/UX improvements) ✅
 5. **Phase 5.1**: Database Schema for Email Processing ✅
 6. **Phase 5.2**: Webhook Implementation (Microsoft Graph) ✅
 7. **Phase 5.3**: AI Email Analysis Implementation (Phase 1 - Prototype) ✅
 8. **Phase 5.4**: Pipedrive Integration (Phase 1 - Basic Integration) ✅
-9. **Phase 8**: Railway Backend Deployment + Vercel Frontend Deployment ✅
+9. **Phase 6**: Error Handling & Logging (Enhanced) ✅
+10. **Phase 8**: Railway Backend Deployment + Vercel Frontend Deployment ✅
 
 ### Next Priority for Production:
-1. **Phase 5.3**: AI Email Analysis Implementation (Phase 2 - Production Integration)
-2. **Phase 5.4**: Pipedrive Integration (Phase 2 - Production Integration)
-3. **Phase 6**: Error Handling & Logging (Enhanced)
-4. **Phase 7**: Comprehensive Testing
+1. **Phase 5.3**: AI Email Analysis Implementation (Phase 2B - Webhook Integration) 🚧
+2. **Phase 5.4**: Pipedrive Integration (Phase 2 - Production Integration) 🚧
+3. **Phase 7**: Comprehensive Testing
 
 ### Nice-to-Have for Enhanced Version:
 1. **Phase 7**: Comprehensive Testing
 2. **Phase 9**: Documentation & Optimization
+
+### 🎯 Final Steps to Complete MVP:
+1. **Connect AI to Webhooks**: Integrate the AI analysis agents into the Microsoft webhook endpoint
+2. **Token Refresh**: Implement refresh token logic for Pipedrive OAuth
+3. **End-to-End Testing**: Test complete flow from email → AI analysis → Pipedrive deal creation
+4. **Production Schema**: Create final schema.sql file
 
 ## Implementation Strategy & Technology Decisions
 
@@ -831,11 +870,12 @@ backend/app/config/
 - **Phase 1**: Project Foundation & Setup
 - **Phase 2**: Authentication & User Management  
 - **Phase 3**: OAuth Integration Framework
-- **Phase 4**: Frontend Dashboard & UI
+- **Phase 4**: Frontend Dashboard & UI (including UI/UX improvements)
 - **Phase 5.1**: Database Schema for Email Processing
 - **Phase 5.2**: Webhook Implementation (Microsoft Graph)
 - **Phase 5.3**: AI Email Analysis Implementation (Phase 1 - Prototype)
 - **Phase 5.4**: Pipedrive Integration (Phase 1 - Basic Integration)
+- **Phase 6**: Error Handling & Logging (Enhanced)
 - **Phase 8**: Deployment & Production
 
 ### 🚧 In Progress:
@@ -847,6 +887,12 @@ backend/app/config/
 2. **Week 2**: Implement refresh token logic for Pipedrive
 3. **Week 3**: Create frontend components for real-time monitoring
 4. **Week 4**: Comprehensive testing and optimization
+
+### 🎯 Remaining Critical Tasks:
+1. **Webhook Integration**: Connect AI analysis agents to the Microsoft webhook endpoint
+2. **Token Refresh**: Implement refresh token logic for Pipedrive OAuth
+3. **End-to-End Testing**: Test the complete flow from email → AI analysis → Pipedrive deal creation
+4. **Production Schema**: Create final schema.sql file with all migrations
 
 ## Manual Intervention Summary
 
