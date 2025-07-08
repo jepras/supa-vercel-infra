@@ -11,7 +11,7 @@ import { useAuth } from '@/components/auth-provider'
 import { ConnectivityTest } from '@/components/connectivity-test'
 import { MonitoringDashboard } from '@/components/monitoring/monitoring-dashboard'
 import { MonitoringProvider } from '@/components/monitoring/monitoring-context'
-import { LogsDashboard } from '@/components/logs/logs-dashboard'
+// import { LogsDashboard } from '@/components/logs/logs-dashboard'
 import { Loader2, Link, Unlink, Bell, BellOff } from 'lucide-react'
 
 interface Integration {
@@ -670,7 +670,7 @@ export default function DashboardPage() {
           </TabsContent>
 
           <TabsContent value="logs" className="space-y-4">
-            <LogsDashboard />
+                            {/* <LogsDashboard /> */}
           </TabsContent>
 
           <TabsContent value="monitoring" className="space-y-4">
