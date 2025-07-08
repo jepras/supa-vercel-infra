@@ -36,6 +36,12 @@ class TokenRefreshError(Exception):
     pass
 
 
+class MicrosoftError(Exception):
+    """Custom exception for Microsoft Graph API errors."""
+
+    pass
+
+
 def handle_ai_errors(func: Callable) -> Callable:
     """Decorator to handle AI analysis errors with logging and retry logic."""
 
@@ -142,6 +148,49 @@ def handle_token_refresh_errors(func: Callable) -> Callable:
         except Exception as e:
             agent_logger.log_token_refresh(False, {"error": str(e)})
             raise TokenRefreshError(f"Token refresh failed: {str(e)}")
+
+    return wrapper
+
+
+def handle_microsoft_errors(func: Callable) -> Callable:
+    """Decorator to handle Microsoft Graph API errors with logging and retry logic."""
+
+    @functools.wraps(func)
+    async def wrapper(*args, **kwargs):
+        max_retries = 3
+        retry_delay = 1  # seconds
+
+        for attempt in range(max_retries):
+            try:
+                result = await func(*args, **kwargs)
+
+                # Log successful operation
+                if hasattr(func, "__name__"):
+                    agent_logger.log_microsoft_operation(
+                        func.__name__, True, {"attempt": attempt + 1}
+                    )
+
+                return result
+
+            except Exception as e:
+                agent_logger.log_microsoft_operation(
+                    func.__name__,
+                    False,
+                    {
+                        "error": str(e),
+                        "attempt": attempt + 1,
+                        "max_retries": max_retries,
+                    },
+                )
+
+                if attempt == max_retries - 1:
+                    # Last attempt failed, raise the error
+                    raise MicrosoftError(
+                        f"Microsoft operation failed after {max_retries} attempts: {str(e)}"
+                    )
+
+                # Wait before retrying
+                time.sleep(retry_delay * (attempt + 1))
 
     return wrapper
 

@@ -349,3 +349,114 @@ Email: mathias@besafe.dk""",
             summary={},
             error=f"Production test with user tokens failed: {str(e)}",
         )
+
+
+@router.post("/test-token-refresh/{user_id}", response_model=ProductionTestResponse)
+async def test_token_refresh(user_id: str):
+    """Test token refresh functionality for both Pipedrive and Microsoft."""
+
+    # Check required environment variables
+    required_vars = [
+        "OPENROUTER_API_KEY",
+        "NEXT_PUBLIC_SUPABASE_URL",
+        "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+    ]
+    missing_vars = [var for var in required_vars if not os.getenv(var)]
+
+    if missing_vars:
+        return ProductionTestResponse(
+            success=False,
+            results=[],
+            summary={},
+            error=f"Missing required environment variables: {missing_vars}",
+        )
+
+    results = []
+    summary = {
+        "user_id": user_id,
+        "pipedrive_status": "not_tested",
+        "microsoft_status": "not_tested",
+        "pipedrive_token_valid": False,
+        "microsoft_token_valid": False,
+    }
+
+    try:
+        # Test Pipedrive token refresh
+        try:
+            from app.agents.pipedrive_manager import PipedriveManager
+
+            pipedrive_manager = PipedriveManager(user_id)
+
+            # Test a simple API call that will trigger token refresh if needed
+            user_info = await pipedrive_manager._make_api_call(
+                "GET", f"{pipedrive_manager.base_url}/users/me"
+            )
+
+            if user_info:
+                summary["pipedrive_status"] = "success"
+                summary["pipedrive_token_valid"] = True
+                results.append(
+                    {
+                        "success": True,
+                        "provider": "pipedrive",
+                        "message": "Pipedrive token is valid and refresh mechanism is working",
+                        "user_info": user_info.get("data", {}),
+                    }
+                )
+            else:
+                summary["pipedrive_status"] = "failed"
+                results.append(
+                    {
+                        "success": False,
+                        "provider": "pipedrive",
+                        "error": "Failed to get user info from Pipedrive",
+                    }
+                )
+
+        except Exception as e:
+            summary["pipedrive_status"] = "error"
+            results.append({"success": False, "provider": "pipedrive", "error": str(e)})
+
+        # Test Microsoft token refresh
+        try:
+            from app.agents.microsoft_manager import MicrosoftManager
+
+            microsoft_manager = MicrosoftManager(user_id)
+
+            # Test a simple API call that will trigger token refresh if needed
+            user_info = await microsoft_manager.get_user_info()
+
+            if user_info:
+                summary["microsoft_status"] = "success"
+                summary["microsoft_token_valid"] = True
+                results.append(
+                    {
+                        "success": True,
+                        "provider": "microsoft",
+                        "message": "Microsoft token is valid and refresh mechanism is working",
+                        "user_info": user_info,
+                    }
+                )
+            else:
+                summary["microsoft_status"] = "failed"
+                results.append(
+                    {
+                        "success": False,
+                        "provider": "microsoft",
+                        "error": "Failed to get user info from Microsoft",
+                    }
+                )
+
+        except Exception as e:
+            summary["microsoft_status"] = "error"
+            results.append({"success": False, "provider": "microsoft", "error": str(e)})
+
+        return ProductionTestResponse(success=True, results=results, summary=summary)
+
+    except Exception as e:
+        return ProductionTestResponse(
+            success=False,
+            results=[],
+            summary=summary,
+            error=f"Token refresh test failed: {str(e)}",
+        )

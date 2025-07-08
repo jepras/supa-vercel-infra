@@ -106,6 +106,21 @@ class AgentLogger:
             log_data,
         )
 
+    def log_microsoft_operation(
+        self, operation: str, success: bool, extra: Optional[Dict[str, Any]] = None
+    ):
+        """Log Microsoft Graph API operations."""
+        log_data = {"operation": f"microsoft_{operation}", "success": success}
+        if extra:
+            log_data.update(extra)
+
+        level = "INFO" if success else "ERROR"
+        self._log(
+            level,
+            f"Microsoft {operation} {'completed' if success else 'failed'}",
+            log_data,
+        )
+
     def log_token_refresh(self, success: bool, provider: str = "pipedrive"):
         """Log token refresh operations."""
         self._log(
