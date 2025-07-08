@@ -27,9 +27,9 @@ response=$(curl -s -w "\n%{http_code}" -X POST \
     -H "Content-Type: application/json" \
     --max-time 30)
 
-# Extract status code and body
-http_code=$(echo "$response" | tail -n1)
-body=$(echo "$response" | head -n -1)
+# Extract status code and body (macOS compatible)
+http_code=$(echo "$response" | tail -1)
+body=$(echo "$response" | sed '$d')
 
 echo "📊 Response Status: $http_code"
 echo ""
@@ -77,7 +77,7 @@ pipedrive_response=$(curl -s -w "\n%{http_code}" -X POST \
     -H "Content-Type: application/json" \
     --max-time 10)
 
-pipedrive_code=$(echo "$pipedrive_response" | tail -n1)
+pipedrive_code=$(echo "$pipedrive_response" | tail -1)
 echo "   Status: $pipedrive_code"
 if [ "$pipedrive_code" -eq 200 ]; then
     echo "   ✅ Pipedrive connection test endpoint available"
@@ -94,7 +94,7 @@ microsoft_response=$(curl -s -w "\n%{http_code}" -X POST \
     -H "Content-Type: application/json" \
     --max-time 10)
 
-microsoft_code=$(echo "$microsoft_response" | tail -n1)
+microsoft_code=$(echo "$microsoft_response" | tail -1)
 echo "   Status: $microsoft_code"
 if [ "$microsoft_code" -eq 200 ]; then
     echo "   ✅ Microsoft connection test endpoint available"
