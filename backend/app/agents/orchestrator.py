@@ -6,27 +6,14 @@ This module coordinates the email processing flow between AI analysis and Pipedr
 
 import time
 from typing import Dict, Any, Optional
-
-# Use absolute imports for testing compatibility
-try:
-    from app.lib.error_handler import (
-        log_activity_to_supabase,
-        log_opportunity_to_supabase,
-        create_correlation_id,
-    )
-    from app.monitoring.agent_logger import agent_logger
-    from app.agents.analyze_email import EmailAnalyzer
-    from app.agents.pipedrive_manager import PipedriveManager
-except ImportError:
-    # Fallback for when running as module
-    from ..lib.error_handler import (
-        log_activity_to_supabase,
-        log_opportunity_to_supabase,
-        create_correlation_id,
-    )
-    from ..monitoring.agent_logger import agent_logger
-    from .analyze_email import EmailAnalyzer
-    from .pipedrive_manager import PipedriveManager
+from app.lib.error_handler import (
+    log_activity_to_supabase,
+    log_opportunity_to_supabase,
+    create_correlation_id,
+)
+from app.monitoring.agent_logger import agent_logger
+from app.agents.analyze_email import EmailAnalyzer
+from app.agents.pipedrive_manager import PipedriveManager
 
 
 class AgentOrchestrator:
@@ -182,9 +169,23 @@ class AgentOrchestrator:
 
             # Determine organization from email domain
             domain = email_data["to"].split("@")[-1].split(".")[0]
-            organization_name = domain.capitalize()
 
-            # Check if organization exists
+            # Skip organization creation for personal email domains
+            personal_domains = [
+                "gmail",
+                "hotmail",
+                "outlook",
+                "yahoo",
+                "icloud",
+                "live",
+                "aol",
+                "protonmail",
+            ]
+            organization_name = None
+            if domain.lower() not in personal_domains:
+                organization_name = domain.capitalize()
+
+            # Check if organization exists (only if we have an organization name)
             org_exists = False
             if organization_name:
                 existing_org = await self.pipedrive_manager.search_organization_by_name(
@@ -266,11 +267,26 @@ class AgentOrchestrator:
             if not organization_name:
                 organization_name = ai_result.get("organization_name")
             if not organization_name:
-                # Fallback to domain-based organization name
+                # Fallback to domain-based organization name (only for non-personal domains)
                 domain = email_data["to"].split("@")[-1].split(".")[0]
-                organization_name = domain.capitalize()
+                personal_domains = [
+                    "gmail",
+                    "hotmail",
+                    "outlook",
+                    "yahoo",
+                    "icloud",
+                    "live",
+                    "aol",
+                    "protonmail",
+                ]
+                if domain.lower() not in personal_domains:
+                    organization_name = domain.capitalize()
 
-            deal_title = f"AI: {person_name} - {organization_name}"
+            # Create deal title based on whether we have an organization
+            if organization_name:
+                deal_title = f"AI: {person_name} - {organization_name}"
+            else:
+                deal_title = f"AI: {person_name}"
 
             deal_data = {
                 "title": deal_title,
@@ -302,6 +318,8 @@ class AgentOrchestrator:
     async def _log_email_note(self, email_data: Dict[str, Any], deal_id: int):
         """Log the email conversation as a summary note in Pipedrive."""
         try:
+            agent_logger.info(f"Creating note for deal {deal_id}")
+
             # Build conversation text
             conversation = f"Latest email:\nFrom: {email_data['from']}\nTo: {email_data['to']}\nSubject: {email_data['subject']}\nContent: {email_data['content']}\n\n"
 
@@ -312,7 +330,16 @@ class AgentOrchestrator:
                     conversation += f"Previous email {i}:\nFrom: {thread_email['from']}\nTo: {thread_email['to']}\nSubject: {thread_email['subject']}\nContent: {thread_email['content']}\n\n"
 
             # Generate AI summary
-            summary = await self.email_analyzer.generate_danish_summary(conversation)
+            try:
+                summary = await self.email_analyzer.generate_danish_summary(
+                    conversation
+                )
+                agent_logger.info(f"AI summary generated for deal {deal_id}")
+            except Exception as summary_error:
+                agent_logger.error(
+                    f"AI summary generation failed: {str(summary_error)}"
+                )
+                summary = "E-mail samtale blev analyseret af AI system."
 
             note_content = f"""Samtale Opsummering:
 
@@ -322,7 +349,7 @@ E-mail Detaljer:
 Fra: {email_data['from']}
 Til: {email_data['to']}
 Emne: {email_data['subject']}
-Modtaget: {email_data['received_at']}
+Modtaget: {email_data.get('sent_at', 'N/A')}
 Antal e-mails: {len(email_data.get('email_thread', [])) + 1}
 
 ---
@@ -333,10 +360,19 @@ AI-genereret opsummering af e-mail analyse system."""
                 "deal_id": deal_id,
             }
 
-            await self.pipedrive_manager.log_note(note_data)
+            agent_logger.info(f"Sending note to Pipedrive for deal {deal_id}")
+            note_result = await self.pipedrive_manager.log_note(note_data)
+
+            if note_result:
+                agent_logger.info(f"Note successfully created for deal {deal_id}")
+            else:
+                agent_logger.error(f"Note creation failed for deal {deal_id}")
 
         except Exception as e:
-            agent_logger.error("Note logging failed", {"error": str(e)})
+            agent_logger.error(f"Note logging failed for deal {deal_id}: {str(e)}")
+            import traceback
+
+            agent_logger.error(f"Note error traceback: {traceback.format_exc()}")
 
     def _categorize_webhook_outcome(
         self, ai_result: Dict[str, Any], pipedrive_result: Dict[str, Any]

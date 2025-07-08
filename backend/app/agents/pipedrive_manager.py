@@ -506,19 +506,24 @@ class PipedriveManager:
 
     @handle_pipedrive_errors
     async def log_note(self, note_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-        """Log a note using the proper Notes API v1."""
+        """Log a note using the Pipedrive API v2."""
         try:
+            agent_logger.info(f"Creating note for deal {note_data.get('deal_id')}")
+
             payload = {
                 "content": note_data.get("content", ""),
                 "deal_id": note_data.get("deal_id"),
             }
 
+            agent_logger.info(f"Note payload: {payload}")
+
             result = await self._make_api_call(
-                "POST", f"{self.v1_base_url}/notes", json=payload
+                "POST", f"{self.base_url}/notes", json=payload
             )
 
+            agent_logger.info(f"Note creation response: {result}")
             return result.get("data", {})
 
         except Exception as e:
-            agent_logger.error("Note logging failed", {"error": str(e)})
+            agent_logger.error(f"Note logging failed: {str(e)}")
             return None
