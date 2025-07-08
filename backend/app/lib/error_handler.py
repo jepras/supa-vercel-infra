@@ -7,8 +7,15 @@ This module provides error handling decorators and utilities for the application
 import functools
 import time
 from typing import Callable, Any, Dict, Optional
-from .supabase_client import supabase
-from ..monitoring.agent_logger import agent_logger
+
+# Use absolute imports for testing compatibility
+try:
+    from app.lib.supabase_client import supabase_manager
+    from app.monitoring.agent_logger import agent_logger
+except ImportError:
+    # Fallback for when running as module
+    from .supabase_client import supabase_manager
+    from ..monitoring.agent_logger import agent_logger
 
 
 class AIAnalysisError(Exception):
@@ -139,7 +146,7 @@ def handle_token_refresh_errors(func: Callable) -> Callable:
     return wrapper
 
 
-def log_activity_to_supabase(
+async def log_activity_to_supabase(
     user_id: str,
     activity_type: str,
     status: str,
@@ -148,20 +155,37 @@ def log_activity_to_supabase(
 ):
     """Log activity to Supabase for real-time updates."""
     try:
-        activity_data = {
-            "user_id": user_id,
-            "activity_type": activity_type,
-            "status": status,
-            "message": message,
-            "metadata": metadata or {},
-        }
-
-        supabase.table("activity_logs").insert(activity_data).execute()
+        await supabase_manager.log_activity(
+            user_id, activity_type, status, message, metadata
+        )
 
     except Exception as e:
+        # Log the error but don't fail the main operation
+        print(f"Error logging activity: {e}")
         agent_logger.error(
             "Failed to log activity to Supabase",
             {"error": str(e), "activity_type": activity_type, "user_id": user_id},
+        )
+
+
+async def log_opportunity_to_supabase(
+    user_id: str,
+    email_data: Dict[str, Any],
+    ai_result: Dict[str, Any],
+    pipedrive_result: Optional[Dict[str, Any]] = None,
+):
+    """Log opportunity analysis to Supabase for tracking and analytics."""
+    try:
+        await supabase_manager.log_opportunity(
+            user_id, email_data, ai_result, pipedrive_result
+        )
+
+    except Exception as e:
+        # Log the error but don't fail the main operation
+        print(f"Error logging opportunity: {e}")
+        agent_logger.error(
+            "Failed to log opportunity to Supabase",
+            {"error": str(e), "user_id": user_id, "email_to": email_data.get("to")},
         )
 
 

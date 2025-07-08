@@ -12,8 +12,9 @@ from datetime import datetime
 from dotenv import load_dotenv
 
 # Add the app directory to the Python path
-sys.path.append(os.path.join(os.path.dirname(__file__), "app"))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "app"))
 
+# Now we can import from the app package
 from agents.orchestrator import AgentOrchestrator
 from monitoring.agent_logger import agent_logger
 
@@ -159,6 +160,62 @@ Mathias""",
             "conversation_id": "conv_004",
             "email_thread": [],
         },
+        # DUPLICATE 1: Peter Hansen - same recipient, different subject
+        {
+            "id": 5,
+            "from": "mathias@besafe.dk",
+            "to": "peter.hansen@microsoft.com",
+            "subject": "Opfølgning på tilbud - Microsoft Danmark (DUPLICATE)",
+            "content": """Hej Peter,
+
+Jeg følger op på vores tidligere tilbud på sikkerhedsløsninger til Microsoft Danmark.
+
+Har du haft mulighed for at gennemgå forslaget? Jeg er klar til at booke et møde for at diskutere detaljerne.
+
+Vi kan tilbyde:
+- Avancerede firewall-løsninger
+- Endpoint protection
+- Security awareness træning
+- 24/7 support
+
+Det samlede beløb er DKK 45.000 ekskl. moms for et års løsning.
+
+Med venlig hilsen,
+Mathias Jensen
+BeSafe Security Solutions
+Tlf: +45 70 12 34 56
+Email: mathias@besafe.dk""",
+            "received_at": "2024-01-20T10:30:00Z",
+            "conversation_id": "conv_001_dup",
+            "email_thread": [],
+        },
+        # DUPLICATE 2: Anna Jensen - same recipient, different subject
+        {
+            "id": 6,
+            "from": "mathias@besafe.dk",
+            "to": "anna.jensen@novonordisk.com",
+            "subject": "Opfølgning på sikkerhedsforbedringer - Novo Nordisk (DUPLICATE)",
+            "content": """Kære Anna,
+
+Jeg følger op på vores tidligere forslag til sikkerhedsforbedringer for jeres nye kontor.
+
+Har du haft mulighed for at gennemgå forslaget? Jeg er klar til at diskutere implementeringen.
+
+Baseret på vores analyse foreslår jeg:
+- Implementering af Zero Trust arkitektur
+- Multi-factor authentication for alle systemer
+- Regelmæssige security audits
+- Backup og disaster recovery løsninger
+
+Det samlede budget er DKK 125.000 ekskl. moms.
+
+Bedste hilsner,
+Mathias
+BeSafe Security""",
+            "received_at": "2024-01-21T14:15:00Z",
+            "conversation_id": "conv_002_dup",
+            "email_thread": [],
+        },
     ]
 
     print(f"✅ Loaded {len(sample_emails)} sample emails")
@@ -174,18 +231,23 @@ async def test_production_agents():
     load_dotenv()
 
     # Check required environment variables
-    required_vars = ["OPENROUTER_API_KEY", "SUPABASE_URL", "SUPABASE_ANON_KEY"]
+    required_vars = [
+        "OPENROUTER_API_KEY",
+        "NEXT_PUBLIC_SUPABASE_URL",
+        "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+    ]
     missing_vars = [var for var in required_vars if not os.getenv(var)]
 
     if missing_vars:
         print(f"❌ Missing required environment variables: {missing_vars}")
+        print("Please set the required environment variables and try again.")
         return
 
     # Load sample emails
     sample_emails = load_sample_emails()
 
     # Test user ID (you can change this to test with different users)
-    test_user_id = "test-user-123"
+    test_user_id = "0babb68e-4bd5-4b2d-ac57-49826369178d"
 
     results = []
 
@@ -244,27 +306,50 @@ def analyze_results(results: list):
     print("=" * 60)
 
     total_emails = len(results)
-    successful_processing = sum(1 for r in results if r["success"])
+    successful_processing = sum(
+        1 for r in results if r is not None and r.get("success")
+    )
     sales_opportunities = sum(
         1
         for r in results
-        if r["success"] and r.get("ai_result", {}).get("is_sales_opportunity", False)
+        if r is not None
+        and r.get("success")
+        and r.get("ai_result", {}).get("is_sales_opportunity", False)
     )
     deals_created = sum(
         1
         for r in results
-        if r["success"] and r.get("pipedrive_result", {}).get("deal_created", False)
+        if r is not None
+        and r.get("success")
+        and r.get("pipedrive_result") is not None
+        and r.get("pipedrive_result", {}).get("deal_created", False)
+    )
+    contacts_created = sum(
+        1
+        for r in results
+        if r is not None
+        and r.get("success")
+        and r.get("pipedrive_result") is not None
+        and r.get("pipedrive_result", {}).get("contact_created", False)
+    )
+    deals_updated = sum(
+        1
+        for r in results
+        if r is not None
+        and r.get("success")
+        and r.get("pipedrive_result") is not None
+        and r.get("pipedrive_result", {}).get("deal_updated", False)
     )
 
     # Count outcomes
     outcome_counts = {}
     for result in results:
-        if result["success"]:
+        if result is not None and result.get("success"):
             outcome = result.get("outcome", "Unknown")
             outcome_counts[outcome] = outcome_counts.get(outcome, 0) + 1
 
     print(
-        f"📈 {total_emails} emails | {successful_processing} processed | {sales_opportunities} opportunities | {deals_created} deals created"
+        f"📈 {total_emails} emails | {successful_processing} processed | {sales_opportunities} opportunities | {deals_created} deals created | {contacts_created} contacts created | {deals_updated} deals updated"
     )
 
     print(f"\n🎯 OUTCOMES:")

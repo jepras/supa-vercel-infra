@@ -6,10 +6,27 @@ This module coordinates the email processing flow between AI analysis and Pipedr
 
 import time
 from typing import Dict, Any, Optional
-from ..lib.error_handler import log_activity_to_supabase, create_correlation_id
-from ..monitoring.agent_logger import agent_logger
-from .analyze_email import EmailAnalyzer
-from .pipedrive_manager import PipedriveManager
+
+# Use absolute imports for testing compatibility
+try:
+    from app.lib.error_handler import (
+        log_activity_to_supabase,
+        log_opportunity_to_supabase,
+        create_correlation_id,
+    )
+    from app.monitoring.agent_logger import agent_logger
+    from app.agents.analyze_email import EmailAnalyzer
+    from app.agents.pipedrive_manager import PipedriveManager
+except ImportError:
+    # Fallback for when running as module
+    from ..lib.error_handler import (
+        log_activity_to_supabase,
+        log_opportunity_to_supabase,
+        create_correlation_id,
+    )
+    from ..monitoring.agent_logger import agent_logger
+    from .analyze_email import EmailAnalyzer
+    from .pipedrive_manager import PipedriveManager
 
 
 class AgentOrchestrator:
@@ -50,7 +67,7 @@ class AgentOrchestrator:
                 agent_logger.log_webhook_outcome(outcome, email_data)
 
                 # Log activity for non-opportunities (GDPR compliant - no email storage)
-                log_activity_to_supabase(
+                await log_activity_to_supabase(
                     self.user_id,
                     "email_analyzed",
                     "success",
@@ -79,8 +96,14 @@ class AgentOrchestrator:
             outcome = self._categorize_webhook_outcome(ai_result, pipedrive_result)
             agent_logger.log_webhook_outcome(outcome, email_data)
 
-            # Step 5: Log activity
-            self._log_activity(email_data, ai_result, pipedrive_result, outcome)
+            # Step 5: Log opportunity analysis only if deal was created (GDPR compliant)
+            if pipedrive_result and pipedrive_result.get("deal_created", False):
+                await log_opportunity_to_supabase(
+                    self.user_id, email_data, ai_result, pipedrive_result
+                )
+
+            # Step 6: Log activity
+            await self._log_activity(email_data, ai_result, pipedrive_result, outcome)
 
             processing_time = time.time() - start_time
 
@@ -373,7 +396,7 @@ AI-genereret opsummering af e-mail analyse system."""
         # If we get here, something went wrong
         return "Error: Failed to process"
 
-    def _log_activity(
+    async def _log_activity(
         self,
         email_data: Dict[str, Any],
         ai_result: Dict[str, Any],
@@ -383,7 +406,7 @@ AI-genereret opsummering af e-mail analyse system."""
         """Log activity to Supabase for real-time updates."""
         try:
             # Always log the analysis activity
-            log_activity_to_supabase(
+            await log_activity_to_supabase(
                 self.user_id,
                 "email_analyzed",
                 "success",

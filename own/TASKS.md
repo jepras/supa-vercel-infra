@@ -365,27 +365,55 @@ This document breaks down the Next.js Frontend + Railway Python Backend SaaS app
 #### Phase 2: Production Integration - IN PROGRESS 🚧
 **Goal**: Convert prototype to modular production system with token refresh
 
-##### Phase 2A: Modular Architecture Implementation - IN PROGRESS 🚧
+##### Phase 2A: Modular Architecture Implementation - COMPLETED ✅
 **Goal**: Create production-ready modules with proper separation of concerns
 
 ###### Tasks:
-- [ ] Create modular folder structure in `backend/app/agents/`
-- [ ] Implement `analyze_email.py` with OpenRouter integration and prompt management
-- [ ] Implement `pipedrive_manager.py` with token refresh logic and all API operations
-- [ ] Implement `orchestrator.py` for coordinating the email processing flow
-- [ ] Create `prompts.py` for centralized prompt templates
-- [ ] Add structured logging and error handling
-- [ ] Test with sample emails (same as prototype)
-- [ ] Implement token refresh logic for long-term authentication
+- [x] Create modular folder structure in `backend/app/agents/`
+- [x] Implement `analyze_email.py` with OpenRouter integration and prompt management
+- [x] Implement `pipedrive_manager.py` with token refresh logic and all API operations
+- [x] Implement `orchestrator.py` for coordinating the email processing flow
+- [x] Create `prompts.py` for centralized prompt templates
+- [x] Add structured logging and error handling
+- [x] Test with sample emails (same as prototype)
+- [x] Implement token refresh logic for long-term authentication
+- [x] Implement opportunity logging to track only created deals (GDPR compliant)
 
-###### Files to Create:
-- [ ] `backend/app/agents/__init__.py`
-- [ ] `backend/app/agents/analyze_email.py` (production version based on prototype)
-- [ ] `backend/app/agents/pipedrive_manager.py` (production version with token refresh)
-- [ ] `backend/app/agents/orchestrator.py` (agent coordination)
-- [ ] `backend/app/agents/prompts.py` (prompt templates)
-- [ ] `backend/app/lib/error_handler.py` (error handling utilities)
-- [ ] `backend/app/monitoring/agent_logger.py` (structured logging)
+###### Files Created:
+- [x] `backend/app/agents/__init__.py`
+- [x] `backend/app/agents/analyze_email.py` (production version based on prototype)
+- [x] `backend/app/agents/pipedrive_manager.py` (production version with token refresh)
+- [x] `backend/app/agents/orchestrator.py` (agent coordination)
+- [x] `backend/app/agents/prompts.py` (prompt templates)
+- [x] `backend/app/lib/error_handler.py` (error handling utilities)
+- [x] `backend/app/monitoring/agent_logger.py` (structured logging)
+- [x] `backend/test_production_agents.py` (test script for verification)
+- [x] `backend/check_opportunity_logs.py` (opportunity logs verification script)
+
+##### Phase 2A.1: Opportunity Logging Implementation - COMPLETED ✅
+**Goal**: Implement GDPR-compliant opportunity logging that only tracks deals actually created
+
+###### Tasks:
+- [x] Add `log_opportunity` method to Supabase client for `opportunity_logs` table
+- [x] Create `log_opportunity_to_supabase` helper function in error handler
+- [x] Integrate opportunity logging into orchestrator (only when deals are created)
+- [x] Implement email hash deduplication for GDPR compliance
+- [x] Store complete deal metadata including deal titles and IDs
+- [x] Create verification script to check opportunity logs
+- [x] Test with duplicate emails to verify only created deals are logged
+
+###### Key Features Implemented:
+- [x] **GDPR Compliance**: Only logs deals actually created, not every email analysis
+- [x] **Email Deduplication**: SHA-256 hash prevents duplicate processing
+- [x] **Complete Metadata**: AI results, Pipedrive results, deal titles, confidence scores
+- [x] **Smart Filtering**: Non-opportunities and existing deals are not logged
+- [x] **Real-time Verification**: Script to check and display opportunity logs
+
+###### Test Results:
+- [x] **6 emails processed**: Only 1 new opportunity log created (Mads Nielsen deal)
+- [x] **Duplicate Detection**: Existing deals correctly not logged
+- [x] **Non-opportunities**: Support emails correctly not logged
+- [x] **Deal Creation**: Only actual Pipedrive deal creation triggers logging
 
 ##### Phase 2B: Webhook Integration - PLANNED 📋
 **Goal**: Connect production modules to existing webhook pipeline
@@ -427,34 +455,11 @@ This document breaks down the Next.js Frontend + Railway Python Backend SaaS app
 - [x] Organization assignment based on email domains works properly
 - [x] Danish summaries are generated correctly
 - [x] Webhook outcome categorization provides clear status reporting
-- [ ] Modular architecture is clean and maintainable
-- [ ] Token refresh works for long-term authentication
-- [ ] Real-time updates work in dashboard
-- [ ] Performance metrics are tracked and displayed
-- [ ] Rate limiting prevents API abuse
-- [ ] Cost monitoring shows OpenRouter usage and costs
-- [ ] Model switching works correctly in production
-- [ ] Cost controls prevent excessive spending
-- [x] GDPR compliance: No email storage for non-opportunities
-- [x] Only opportunity data stored in database
-- [x] Existing deals detected but never updated
-
-#### Manual Intervention Required:
-- [x] Obtain OpenRouter API key
-- [x] Configure OpenRouter account and billing
-- [ ] Set up monitoring dashboard (optional)
-- [ ] Configure model preferences and cost limits
-
-#### Verification:
-- [x] AI analysis function works with >80% accuracy using OpenRouter
-- [x] Opportunity detection provides reasonable confidence scores
-- [x] Reasoning is extracted and displayed properly
-- [x] Errors are properly logged and handled with retry logic
-- [x] End-to-end flow: Email → AI Analysis → Pipedrive Deal creation
-- [x] Duplicate detection works correctly (no duplicate deals created)
-- [x] Organization assignment based on email domains works properly
-- [x] Danish summaries are generated correctly
-- [x] Webhook outcome categorization provides clear status reporting
+- [x] Modular architecture is clean and maintainable
+- [x] Token refresh works for long-term authentication
+- [x] Opportunity logging only tracks deals actually created (GDPR compliant)
+- [x] Email hash deduplication prevents duplicate processing
+- [x] Complete deal metadata stored including titles and IDs
 - [ ] Real-time updates work in dashboard
 - [ ] Performance metrics are tracked and displayed
 - [ ] Rate limiting prevents API abuse
@@ -495,6 +500,7 @@ This document breaks down the Next.js Frontend + Railway Python Backend SaaS app
 - [ ] Make sure that we use refresh tokens instead of access tokens so the user doesn't have to go through the oauth flow again and again. 
 - [ ] Convert PipedriveClient to production module in `backend/app/agents/pipedrive_manager.py` using sample emails.
 - [ ] Connect PipeDriveClient with real mails from webhook subscription instead  of sample emails. 
+- [ ] Add a schema.sql file that should have the latest overview of what the database looks like after all the migrations. 
 
 
 ##### Files to Create:

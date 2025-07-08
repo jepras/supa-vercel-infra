@@ -9,13 +9,25 @@ import json
 import time
 import httpx
 from typing import Dict, Any, Optional
-from ..lib.error_handler import handle_ai_errors, AIAnalysisError
-from ..monitoring.agent_logger import agent_logger
-from .prompts import (
-    build_email_analysis_prompt,
-    build_org_name_prompt,
-    build_danish_summary_prompt,
-)
+
+# Use absolute imports for testing compatibility
+try:
+    from app.lib.error_handler import handle_ai_errors, AIAnalysisError
+    from app.monitoring.agent_logger import agent_logger
+    from app.agents.prompts import (
+        build_email_analysis_prompt,
+        build_org_name_prompt,
+        build_danish_summary_prompt,
+    )
+except ImportError:
+    # Fallback for when running as module
+    from ..lib.error_handler import handle_ai_errors, AIAnalysisError
+    from ..monitoring.agent_logger import agent_logger
+    from .prompts import (
+        build_email_analysis_prompt,
+        build_org_name_prompt,
+        build_danish_summary_prompt,
+    )
 
 
 class EmailAnalyzer:
