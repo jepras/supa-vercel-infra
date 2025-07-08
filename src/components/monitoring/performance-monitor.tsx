@@ -167,23 +167,32 @@ export function PerformanceMonitor() {
               {performanceSummary?.operation_breakdown && Object.keys(performanceSummary.operation_breakdown).length > 0 ? (
                 <div className="space-y-3">
                   {Object.entries(performanceSummary.operation_breakdown)
-                    .sort(([,a], [,b]) => b.total - a.total)
-                    .map(([operation, stats]) => (
-                      <div key={operation} className="flex items-center justify-between p-3 border rounded-lg">
-                        <div className="flex-1">
-                          <div className="font-medium">{operation}</div>
-                                                     <div className="text-sm text-muted-foreground">
-                             {stats.successful}/{stats.total} successful • {(stats.avg_duration_ms || 0).toFixed(0)}ms avg
-                           </div>
-                        </div>
-                        <div className="text-right">
-                          <div className="font-bold">{stats.total > 0 ? ((stats.successful / stats.total) * 100).toFixed(1) : "0.0"}%</div>
-                          <div className="text-xs text-muted-foreground">
-                            Success Rate
+                    .sort(([,a], [,b]) => (b as any).total - (a as any).total)
+                    .map(([operation, stats]) => {
+                      const typedStats = stats as {
+                        total: number
+                        successful: number
+                        failed: number
+                        avg_duration_ms: number
+                        total_duration_ms: number
+                      }
+                      return (
+                        <div key={operation} className="flex items-center justify-between p-3 border rounded-lg">
+                          <div className="flex-1">
+                            <div className="font-medium">{operation}</div>
+                            <div className="text-sm text-muted-foreground">
+                              {typedStats.successful}/{typedStats.total} successful • {(typedStats.avg_duration_ms || 0).toFixed(0)}ms avg
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <div className="font-bold">{typedStats.total > 0 ? ((typedStats.successful / typedStats.total) * 100).toFixed(1) : "0.0"}%</div>
+                            <div className="text-xs text-muted-foreground">
+                              Success Rate
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      )
+                    })}
                 </div>
               ) : (
                 <div className="text-center py-8 text-muted-foreground">
