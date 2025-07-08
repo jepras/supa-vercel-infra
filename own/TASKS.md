@@ -363,10 +363,34 @@ This document breaks down the Next.js Frontend + Railway Python Backend SaaS app
 - [x] **Day 7**: Ready for webhook integration with comprehensive error handling
 
 #### Phase 2: Production Integration - IN PROGRESS 🚧
-**Goal**: Integrate AI analysis into webhook pipeline with monitoring
+**Goal**: Convert prototype to modular production system with token refresh
 
-##### Tasks:
-- [ ] Convert prototype to production modules in `backend/app/agents/`
+##### Phase 2A: Modular Architecture Implementation - IN PROGRESS 🚧
+**Goal**: Create production-ready modules with proper separation of concerns
+
+###### Tasks:
+- [ ] Create modular folder structure in `backend/app/agents/`
+- [ ] Implement `analyze_email.py` with OpenRouter integration and prompt management
+- [ ] Implement `pipedrive_manager.py` with token refresh logic and all API operations
+- [ ] Implement `orchestrator.py` for coordinating the email processing flow
+- [ ] Create `prompts.py` for centralized prompt templates
+- [ ] Add structured logging and error handling
+- [ ] Test with sample emails (same as prototype)
+- [ ] Implement token refresh logic for long-term authentication
+
+###### Files to Create:
+- [ ] `backend/app/agents/__init__.py`
+- [ ] `backend/app/agents/analyze_email.py` (production version based on prototype)
+- [ ] `backend/app/agents/pipedrive_manager.py` (production version with token refresh)
+- [ ] `backend/app/agents/orchestrator.py` (agent coordination)
+- [ ] `backend/app/agents/prompts.py` (prompt templates)
+- [ ] `backend/app/lib/error_handler.py` (error handling utilities)
+- [ ] `backend/app/monitoring/agent_logger.py` (structured logging)
+
+##### Phase 2B: Webhook Integration - PLANNED 📋
+**Goal**: Connect production modules to existing webhook pipeline
+
+###### Tasks:
 - [ ] Connect AI analysis to existing webhook pipeline (`/api/webhooks/microsoft/email`)
 - [ ] Implement structured logging with correlation IDs
 - [ ] Add comprehensive error handling and retry logic
@@ -377,23 +401,43 @@ This document breaks down the Next.js Frontend + Railway Python Backend SaaS app
 - [ ] Add model switching capabilities in production
 - [ ] Create cost monitoring dashboard
 
-##### Files to Create:
-- [ ] `backend/app/agents/__init__.py`
-- [ ] `backend/app/agents/analyze_email.py` (production version based on prototype)
-- [ ] `backend/app/agents/pipedrive_manager.py` (production version based on PipedriveClient)
-- [ ] `backend/app/agents/orchestrator.py` (agent coordination)
-- [ ] `backend/app/agents/prompts.py` (prompt templates)
+###### Additional Files for Phase 2B:
 - [ ] `src/components/email-viewer.tsx`
 - [ ] `src/components/ai-analysis.tsx`
 - [ ] `src/components/deal-status.tsx`
 - [ ] `src/components/cost-monitor.tsx` (OpenRouter cost monitoring)
-
-##### Phase 2 Additional Files (Monitoring):
-- [ ] `backend/app/monitoring/agent_logger.py` (structured logging)
 - [ ] `backend/app/monitoring/metrics.py` (performance tracking)
 - [ ] `backend/app/monitoring/cost_tracker.py` (OpenRouter cost monitoring)
 - [ ] `backend/app/config/rate_limits.py` (API rate limiting)
 - [ ] `backend/app/config/ai_models.py` (model management)
+
+#### Manual Intervention Required:
+- [x] Obtain OpenRouter API key
+- [x] Configure OpenRouter account and billing
+- [ ] Set up monitoring dashboard (optional)
+- [ ] Configure model preferences and cost limits
+
+#### Verification:
+- [x] AI analysis function works with >80% accuracy using OpenRouter
+- [x] Opportunity detection provides reasonable confidence scores
+- [x] Reasoning is extracted and displayed properly
+- [x] Errors are properly logged and handled with retry logic
+- [x] End-to-end flow: Email → AI Analysis → Pipedrive Deal creation
+- [x] Duplicate detection works correctly (no duplicate deals created)
+- [x] Organization assignment based on email domains works properly
+- [x] Danish summaries are generated correctly
+- [x] Webhook outcome categorization provides clear status reporting
+- [ ] Modular architecture is clean and maintainable
+- [ ] Token refresh works for long-term authentication
+- [ ] Real-time updates work in dashboard
+- [ ] Performance metrics are tracked and displayed
+- [ ] Rate limiting prevents API abuse
+- [ ] Cost monitoring shows OpenRouter usage and costs
+- [ ] Model switching works correctly in production
+- [ ] Cost controls prevent excessive spending
+- [x] GDPR compliance: No email storage for non-opportunities
+- [x] Only opportunity data stored in database
+- [x] Existing deals detected but never updated
 
 #### Manual Intervention Required:
 - [x] Obtain OpenRouter API key
