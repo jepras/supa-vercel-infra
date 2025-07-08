@@ -17,17 +17,17 @@ interface OAuthResponse {
 function OAuthCallbackContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { session } = useAuth()
+  const { session, isLoading: authLoading } = useAuth()
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading')
   const [message, setMessage] = useState('Processing OAuth callback...')
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    // Wait for session to be available before proceeding
-    if (session !== undefined) {
+    // Wait for auth to be loaded and session to be available before proceeding
+    if (!authLoading && session !== undefined) {
       handleOAuthCallback()
     }
-  }, [session])
+  }, [session, authLoading])
 
   async function handleOAuthCallback() {
     try {
@@ -114,18 +114,35 @@ function OAuthCallbackContent() {
     handleOAuthCallback()
   }
 
+  // Show loading state while auth is being determined
+  if (authLoading || status === 'loading') {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <CardTitle className="flex items-center justify-center gap-2">
+              <Loader2 className="h-6 w-6 animate-spin" />
+              Microsoft Outlook OAuth
+            </CardTitle>
+            <CardDescription>
+              {authLoading ? 'Loading authentication...' : 'Completing OAuth authorization...'}
+            </CardDescription>
+          </CardHeader>
+        </Card>
+      </div>
+    )
+  }
+
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <CardTitle className="flex items-center justify-center gap-2">
-            {status === 'loading' && <Loader2 className="h-6 w-6 animate-spin" />}
             {status === 'success' && <CheckCircle className="h-6 w-6 text-green-600" />}
             {status === 'error' && <XCircle className="h-6 w-6 text-red-600" />}
             Microsoft Outlook OAuth
           </CardTitle>
           <CardDescription>
-            {status === 'loading' && 'Completing OAuth authorization...'}
             {status === 'success' && 'Successfully connected to Microsoft Outlook'}
             {status === 'error' && 'Failed to connect to Microsoft Outlook'}
           </CardDescription>
@@ -168,13 +185,6 @@ function OAuthCallbackContent() {
                 </Button>
               </>
             )}
-            
-            {status === 'loading' && (
-              <Button disabled className="w-full">
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Processing...
-              </Button>
-            )}
           </div>
         </CardContent>
       </Card>
@@ -185,7 +195,7 @@ function OAuthCallbackContent() {
 export default function MicrosoftCallbackPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">
             <CardTitle className="flex items-center justify-center gap-2">

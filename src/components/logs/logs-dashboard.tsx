@@ -39,7 +39,7 @@ export function LogsDashboard() {
   const [activityPage, setActivityPage] = useState(1)
   const [opportunityTotal, setOpportunityTotal] = useState(0)
   const [activityTotal, setActivityTotal] = useState(0)
-  const itemsPerPage = 10
+  const itemsPerPage = 15 // Increased from 10 to show more items
 
   useEffect(() => {
     if (user) {
@@ -111,21 +111,21 @@ export function LogsDashboard() {
 
   function getOpportunityStatus(opportunity: OpportunityLog) {
     if (opportunity.opportunity_detected) {
-      return { label: 'Opportunity Detected', color: 'bg-green-100 text-green-800' }
+      return { label: 'Opportunity Detected', color: 'bg-green-950/50 text-green-400 border border-green-800' }
     }
-    return { label: 'No Opportunity', color: 'bg-gray-100 text-gray-800' }
+    return { label: 'No Opportunity', color: 'bg-muted text-muted-foreground border border-border' }
   }
 
   function getActivityStatus(status: string) {
     switch (status) {
       case 'success':
-        return { label: 'Success', color: 'bg-green-100 text-green-800' }
+        return { label: 'Success', color: 'bg-green-950/50 text-green-400 border border-green-800' }
       case 'error':
-        return { label: 'Error', color: 'bg-red-100 text-red-800' }
+        return { label: 'Error', color: 'bg-red-950/50 text-red-400 border border-red-800' }
       case 'warning':
-        return { label: 'Warning', color: 'bg-yellow-100 text-yellow-800' }
+        return { label: 'Warning', color: 'bg-yellow-950/50 text-yellow-400 border border-yellow-800' }
       default:
-        return { label: 'Pending', color: 'bg-blue-100 text-blue-800' }
+        return { label: 'Pending', color: 'bg-blue-950/50 text-blue-400 border border-blue-800' }
     }
   }
 
@@ -187,12 +187,12 @@ export function LogsDashboard() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Opportunity Logs Section */}
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <DollarSign className="h-5 w-5" />
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <DollarSign className="h-4 w-4" />
             Opportunity Logs
           </CardTitle>
           <CardDescription>
@@ -201,55 +201,55 @@ export function LogsDashboard() {
         </CardHeader>
         <CardContent>
           {opportunityLogs.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <Mail className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>No opportunity logs found</p>
+            <div className="text-center py-6 text-muted-foreground">
+              <Mail className="h-8 w-8 mx-auto mb-2 opacity-50" />
+              <p className="text-sm">No opportunity logs found</p>
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-2">
               {opportunityLogs.map((opportunity) => {
                 const status = getOpportunityStatus(opportunity)
                 const dealInfo = getDealInfo(opportunity)
                 
                 return (
-                  <div key={opportunity.id} className="border rounded-lg p-4 space-y-3">
+                  <div key={opportunity.id} className="border rounded-md p-3 space-y-2">
                     <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                          <Badge className={status.color}>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Badge className={`${status.color} text-xs`}>
                             {status.label}
                           </Badge>
-                          <Badge variant="outline">
+                          <Badge variant="outline" className="text-xs">
                             {(opportunity.confidence_score * 100).toFixed(1)}% confidence
                           </Badge>
                         </div>
                         
-                        <h4 className="font-medium text-sm mb-1">{opportunity.subject}</h4>
+                        <h4 className="font-medium text-sm mb-1 truncate">{opportunity.subject}</h4>
                         
-                        <div className="text-sm text-muted-foreground space-y-1">
-                          <div className="flex items-center gap-2">
+                        <div className="text-xs text-muted-foreground space-y-0.5">
+                          <div className="flex items-center gap-1">
                             <User className="h-3 w-3" />
-                            <span>From: {opportunity.sender_email}</span>
+                            <span className="truncate">From: {opportunity.sender_email}</span>
                           </div>
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-1">
                             <Mail className="h-3 w-3" />
-                            <span>To: {opportunity.recipient_email}</span>
+                            <span className="truncate">To: {opportunity.recipient_email}</span>
                           </div>
                         </div>
                       </div>
                       
-                      <div className="text-right text-sm text-muted-foreground">
+                      <div className="text-right text-xs text-muted-foreground ml-2 flex-shrink-0">
                         {new Date(opportunity.created_at).toLocaleString()}
                       </div>
                     </div>
                     
                     {opportunity.opportunity_detected && (
-                      <div className="bg-blue-50 border border-blue-200 rounded p-3 space-y-2">
-                        <div className="flex items-center gap-2">
-                          <Building className="h-4 w-4 text-blue-600" />
-                          <span className="font-medium text-blue-900">{dealInfo.organization}</span>
+                      <div className="bg-blue-950/50 border border-blue-800/50 rounded p-2 space-y-1">
+                        <div className="flex items-center gap-1">
+                          <Building className="h-3 w-3 text-blue-400" />
+                          <span className="font-medium text-blue-300 text-xs">{dealInfo.organization}</span>
                         </div>
-                        <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div className="grid grid-cols-2 gap-2 text-xs">
                           <div>
                             <span className="text-muted-foreground">Contact:</span> {dealInfo.contactName}
                           </div>
@@ -266,7 +266,7 @@ export function LogsDashboard() {
                     )}
                     
                     {opportunity.reasoning && (
-                      <div className="text-sm text-muted-foreground bg-gray-50 p-2 rounded">
+                      <div className="text-xs text-muted-foreground bg-muted p-2 rounded border border-border">
                         <strong>AI Reasoning:</strong> {opportunity.reasoning}
                       </div>
                     )}
@@ -275,18 +275,18 @@ export function LogsDashboard() {
               })}
               
               {/* Pagination */}
-              <div className="flex items-center justify-between pt-4">
-                <div className="text-sm text-muted-foreground">
+              <div className="flex items-center justify-between pt-3">
+                <div className="text-xs text-muted-foreground">
                   Showing {((opportunityPage - 1) * itemsPerPage) + 1} to {Math.min(opportunityPage * itemsPerPage, opportunityTotal)} of {opportunityTotal} opportunities
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-1">
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => setOpportunityPage(prev => Math.max(1, prev - 1))}
                     disabled={opportunityPage === 1}
                   >
-                    <ChevronLeft className="h-4 w-4" />
+                    <ChevronLeft className="h-3 w-3" />
                   </Button>
                   <Button
                     variant="outline"
@@ -294,7 +294,7 @@ export function LogsDashboard() {
                     onClick={() => setOpportunityPage(prev => prev + 1)}
                     disabled={opportunityPage * itemsPerPage >= opportunityTotal}
                   >
-                    <ChevronRight className="h-4 w-4" />
+                    <ChevronRight className="h-3 w-3" />
                   </Button>
                 </div>
               </div>
@@ -305,9 +305,9 @@ export function LogsDashboard() {
 
       {/* Activity Logs Section */}
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Activity className="h-5 w-5" />
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Activity className="h-4 w-4" />
             Activity Logs
           </CardTitle>
           <CardDescription>
@@ -316,37 +316,37 @@ export function LogsDashboard() {
         </CardHeader>
         <CardContent>
           {activityLogs.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <Activity className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>No activity logs found</p>
+            <div className="text-center py-6 text-muted-foreground">
+              <Activity className="h-8 w-8 mx-auto mb-2 opacity-50" />
+              <p className="text-sm">No activity logs found</p>
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-2">
               {activityLogs.map((activity) => {
                 const status = getActivityStatus(activity.status)
                 const outcome = getActivityOutcome(activity)
                 
                 return (
-                  <div key={activity.id} className="border rounded-lg p-4">
+                  <div key={activity.id} className="border rounded-md p-3">
                     <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                          <Badge className={status.color}>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Badge className={`${status.color} text-xs`}>
                             {status.label}
                           </Badge>
-                          <span className="text-sm font-medium capitalize">
+                          <span className="text-xs font-medium capitalize">
                             {activity.activity_type.replace('_', ' ')}
                           </span>
                         </div>
                         
-                        <p className="text-sm mb-1">{outcome}</p>
+                        <p className="text-xs mb-1">{outcome}</p>
                         
                         {activity.description && (
-                          <p className="text-sm text-muted-foreground">{activity.description}</p>
+                          <p className="text-xs text-muted-foreground">{activity.description}</p>
                         )}
                       </div>
                       
-                      <div className="text-right text-sm text-muted-foreground">
+                      <div className="text-right text-xs text-muted-foreground ml-2 flex-shrink-0">
                         {new Date(activity.created_at).toLocaleString()}
                       </div>
                     </div>
@@ -355,18 +355,18 @@ export function LogsDashboard() {
               })}
               
               {/* Pagination */}
-              <div className="flex items-center justify-between pt-4">
-                <div className="text-sm text-muted-foreground">
+              <div className="flex items-center justify-between pt-3">
+                <div className="text-xs text-muted-foreground">
                   Showing {((activityPage - 1) * itemsPerPage) + 1} to {Math.min(activityPage * itemsPerPage, activityTotal)} of {activityTotal} activities
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-1">
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => setActivityPage(prev => Math.max(1, prev - 1))}
                     disabled={activityPage === 1}
                   >
-                    <ChevronLeft className="h-4 w-4" />
+                    <ChevronLeft className="h-3 w-3" />
                   </Button>
                   <Button
                     variant="outline"
@@ -374,7 +374,7 @@ export function LogsDashboard() {
                     onClick={() => setActivityPage(prev => prev + 1)}
                     disabled={activityPage * itemsPerPage >= activityTotal}
                   >
-                    <ChevronRight className="h-4 w-4" />
+                    <ChevronRight className="h-3 w-3" />
                   </Button>
                 </div>
               </div>

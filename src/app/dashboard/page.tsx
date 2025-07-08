@@ -8,7 +8,6 @@ import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/components/auth-provider'
-import { ConnectivityTest } from '@/components/connectivity-test'
 import { MonitoringDashboard } from '@/components/monitoring/monitoring-dashboard'
 import { MonitoringProvider } from '@/components/monitoring/monitoring-context'
 import { LogsDashboard } from '@/components/logs/logs-dashboard'
@@ -23,18 +22,18 @@ interface Integration {
   last_sync_at: string | null
 }
 
-
-
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000'
 
 export default function DashboardPage() {
   const [integrations, setIntegrations] = useState<Integration[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isConnecting, setIsConnecting] = useState(false)
-  const [isTesting, setIsTesting] = useState(false)
-  const [connectionStatus, setConnectionStatus] = useState<'unknown' | 'connected' | 'disconnected'>('unknown')
-  const [microsoftConnectionStatus, setMicrosoftConnectionStatus] = useState<'unknown' | 'connected' | 'disconnected'>('unknown')
-  const [testResult, setTestResult] = useState<string | null>(null)
+  const [isTestingPipedrive, setIsTestingPipedrive] = useState(false)
+  const [isTestingMicrosoft, setIsTestingMicrosoft] = useState(false)
+  const [connectionStatus, setConnectionStatus] = useState<'loading' | 'connected' | 'disconnected'>('loading')
+  const [microsoftConnectionStatus, setMicrosoftConnectionStatus] = useState<'loading' | 'connected' | 'disconnected'>('loading')
+  const [pipedriveTestResult, setPipedriveTestResult] = useState<string | null>(null)
+  const [microsoftTestResult, setMicrosoftTestResult] = useState<string | null>(null)
   const [webhookSubscriptions, setWebhookSubscriptions] = useState<any[]>([])
   const [isCreatingWebhook, setIsCreatingWebhook] = useState(false)
   const [webhookStatus, setWebhookStatus] = useState<string | null>(null)
@@ -77,8 +76,6 @@ export default function DashboardPage() {
 
     setIntegrations(data || [])
   }
-
-
 
   async function handleConnectPipedrive() {
     try {
@@ -128,6 +125,7 @@ export default function DashboardPage() {
 
   async function checkConnectionStatus() {
     try {
+      setConnectionStatus('loading')
       // Get session token for authentication
       const { data: { session } } = await supabase.auth.getSession()
       
@@ -276,12 +274,16 @@ export default function DashboardPage() {
         throw new Error('No session token available')
       }
       
-      const response = await fetch(`${BACKEND_URL}/api/webhooks/microsoft/subscriptions/${user.id}/${subscriptionId}`, {
+      const response = await fetch(`${BACKEND_URL}/api/webhooks/microsoft/unsubscribe`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
           'Content-Type': 'application/json',
         },
+        body: JSON.stringify({
+          user_id: user.id,
+          subscription_id: subscriptionId
+        })
       })
       
       if (response.ok) {
@@ -299,6 +301,7 @@ export default function DashboardPage() {
 
   async function checkMicrosoftConnectionStatus() {
     try {
+      setMicrosoftConnectionStatus('loading')
       // Get session token for authentication
       const { data: { session } } = await supabase.auth.getSession()
       
@@ -330,8 +333,8 @@ export default function DashboardPage() {
 
   async function testPipedriveConnection() {
     try {
-      setIsTesting(true)
-      setTestResult(null)
+      setIsTestingPipedrive(true)
+      setPipedriveTestResult(null)
       
       // Get session token for authentication
       const { data: { session } } = await supabase.auth.getSession()
@@ -351,22 +354,22 @@ export default function DashboardPage() {
       const data = await response.json()
       
       if (response.ok) {
-        setTestResult(`✅ ${data.message}\n👤 Name: ${data.user_info.name}\n📧 Email: ${data.user_info.email}\n🏢 Company: ${data.user_info.company}`)
+        setPipedriveTestResult(`✅ ${data.message}\n👤 Name: ${data.user_info.name}\n📧 Email: ${data.user_info.email}\n🏢 Company: ${data.user_info.company}`)
       } else {
-        setTestResult(`❌ ${data.detail || 'Test failed'}`)
+        setPipedriveTestResult(`❌ ${data.detail || 'Test failed'}`)
       }
     } catch (error) {
       console.error('Error testing Pipedrive connection:', error)
-      setTestResult(`❌ ${error instanceof Error ? error.message : 'Test failed'}`)
+      setPipedriveTestResult(`❌ ${error instanceof Error ? error.message : 'Test failed'}`)
     } finally {
-      setIsTesting(false)
+      setIsTestingPipedrive(false)
     }
   }
 
   async function testMicrosoftConnection() {
     try {
-      setIsTesting(true)
-      setTestResult(null)
+      setIsTestingMicrosoft(true)
+      setMicrosoftTestResult(null)
       
       // Get session token for authentication
       const { data: { session } } = await supabase.auth.getSession()
@@ -386,15 +389,15 @@ export default function DashboardPage() {
       const data = await response.json()
       
       if (response.ok) {
-        setTestResult(`✅ ${data.message}\n👤 Name: ${data.user_info.name}\n📧 Email: ${data.user_info.email}\n🆔 ID: ${data.user_info.id}`)
+        setMicrosoftTestResult(`✅ ${data.message}\n👤 Name: ${data.user_info.name}\n📧 Email: ${data.user_info.email}\n🆔 ID: ${data.user_info.id}`)
       } else {
-        setTestResult(`❌ ${data.detail || 'Test failed'}`)
+        setMicrosoftTestResult(`❌ ${data.detail || 'Test failed'}`)
       }
     } catch (error) {
       console.error('Error testing Microsoft connection:', error)
-      setTestResult(`❌ ${error instanceof Error ? error.message : 'Test failed'}`)
+      setMicrosoftTestResult(`❌ ${error instanceof Error ? error.message : 'Test failed'}`)
     } finally {
-      setIsTesting(false)
+      setIsTestingMicrosoft(false)
     }
   }
 
@@ -435,34 +438,33 @@ export default function DashboardPage() {
     }
   }
 
-  // Show loading state while checking auth
   if (authLoading || isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          <p>Loading dashboard...</p>
-        </div>
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <CardTitle className="flex items-center justify-center gap-2">
+              <Loader2 className="h-6 w-6 animate-spin" />
+              Loading Dashboard
+            </CardTitle>
+            <CardDescription>
+              Please wait while we load your dashboard...
+            </CardDescription>
+          </CardHeader>
+        </Card>
       </div>
     )
   }
 
-  // Show user info and debug info
   return (
-    <div className="min-h-screen bg-background p-6">
-      <div className="max-w-7xl mx-auto">
-        {/* Header with user info and sign out */}
-        <div className="flex justify-between items-center mb-8">
+    <div className="min-h-screen bg-background">
+      <div className="container mx-auto py-8 px-4">
+        <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-3xl font-bold">Dashboard</h1>
-            <p className="text-muted-foreground">
-              Welcome back, {user?.email}
-            </p>
-            <div className="text-xs text-muted-foreground mt-1">
-              User ID: {user?.id} | Email confirmed: {user?.email_confirmed_at ? 'Yes' : 'No'}
-            </div>
+            <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
+            <p className="text-gray-600 mt-2">Welcome back, {user?.email}</p>
           </div>
-          <Button variant="outline" onClick={signOut}>
+          <Button onClick={signOut} variant="outline">
             Sign Out
           </Button>
         </div>
@@ -472,7 +474,6 @@ export default function DashboardPage() {
             <TabsTrigger value="integrations">Integrations</TabsTrigger>
             <TabsTrigger value="logs">Logs</TabsTrigger>
             <TabsTrigger value="monitoring">Monitoring</TabsTrigger>
-            <TabsTrigger value="connectivity">Connectivity Test</TabsTrigger>
           </TabsList>
 
           <TabsContent value="integrations" className="space-y-6">
@@ -492,14 +493,21 @@ export default function DashboardPage() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="flex items-center gap-2">
-                    <Badge 
-                      variant={microsoftConnectionStatus === 'connected' ? 'default' : 'secondary'}
-                      className={microsoftConnectionStatus === 'connected' ? 'bg-green-100 text-green-800' : ''}
-                    >
-                      {microsoftConnectionStatus === 'connected' && <Link className="h-3 w-3 mr-1" />}
-                      {microsoftConnectionStatus === 'disconnected' && <Unlink className="h-3 w-3 mr-1" />}
-                      {microsoftConnectionStatus === 'connected' ? 'Connected' : 'Not Connected'}
-                    </Badge>
+                    {connectionStatus === 'loading' ? (
+                      <div className="flex items-center gap-2">
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                        <span className="text-sm text-muted-foreground">Checking status...</span>
+                      </div>
+                    ) : (
+                      <Badge 
+                        variant={connectionStatus === 'connected' ? 'default' : 'secondary'}
+                        className={connectionStatus === 'connected' ? 'bg-green-100 text-green-800' : ''}
+                      >
+                        {connectionStatus === 'connected' && <Link className="h-3 w-3 mr-1" />}
+                        {connectionStatus === 'disconnected' && <Unlink className="h-3 w-3 mr-1" />}
+                        {connectionStatus === 'connected' ? 'Connected' : 'Not Connected'}
+                      </Badge>
+                    )}
                   </div>
 
                   <Button 
@@ -520,23 +528,15 @@ export default function DashboardPage() {
                     )}
                   </Button>
 
-                  <Button 
-                    onClick={checkConnectionStatus}
-                    variant="outline"
-                    className="w-full"
-                  >
-                    Refresh Status
-                  </Button>
-
                   {connectionStatus === 'connected' && (
                     <>
                       <Button 
                         onClick={testPipedriveConnection}
-                        disabled={isTesting}
+                        disabled={isTestingPipedrive}
                         variant="outline"
                         className="w-full"
                       >
-                        {isTesting ? (
+                        {isTestingPipedrive ? (
                           <>
                             <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                             Testing...
@@ -546,9 +546,9 @@ export default function DashboardPage() {
                         )}
                       </Button>
                       
-                      {testResult && (
+                      {pipedriveTestResult && (
                         <div className="mt-2 p-3 bg-gray-900 border border-gray-700 rounded-md">
-                          <pre className="text-xs whitespace-pre-wrap text-gray-100">{testResult}</pre>
+                          <pre className="text-xs whitespace-pre-wrap text-gray-100">{pipedriveTestResult}</pre>
                         </div>
                       )}
                     </>
@@ -571,14 +571,21 @@ export default function DashboardPage() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="flex items-center gap-2">
-                    <Badge 
-                      variant={connectionStatus === 'connected' ? 'default' : 'secondary'}
-                      className={connectionStatus === 'connected' ? 'bg-green-100 text-green-800' : ''}
-                    >
-                      {connectionStatus === 'connected' && <Link className="h-3 w-3 mr-1" />}
-                      {connectionStatus === 'disconnected' && <Unlink className="h-3 w-3 mr-1" />}
-                      {connectionStatus === 'connected' ? 'Connected' : 'Not Connected'}
-                    </Badge>
+                    {microsoftConnectionStatus === 'loading' ? (
+                      <div className="flex items-center gap-2">
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                        <span className="text-sm text-muted-foreground">Checking status...</span>
+                      </div>
+                    ) : (
+                      <Badge 
+                        variant={microsoftConnectionStatus === 'connected' ? 'default' : 'secondary'}
+                        className={microsoftConnectionStatus === 'connected' ? 'bg-green-100 text-green-800' : ''}
+                      >
+                        {microsoftConnectionStatus === 'connected' && <Link className="h-3 w-3 mr-1" />}
+                        {microsoftConnectionStatus === 'disconnected' && <Unlink className="h-3 w-3 mr-1" />}
+                        {microsoftConnectionStatus === 'connected' ? 'Connected' : 'Not Connected'}
+                      </Badge>
+                    )}
                   </div>
 
                   <Button 
@@ -599,23 +606,15 @@ export default function DashboardPage() {
                     )}
                   </Button>
 
-                  <Button 
-                    onClick={checkMicrosoftConnectionStatus}
-                    variant="outline"
-                    className="w-full"
-                  >
-                    Refresh Status
-                  </Button>
-
                   {microsoftConnectionStatus === 'connected' && (
                     <>
                       <Button 
                         onClick={testMicrosoftConnection}
-                        disabled={isTesting}
+                        disabled={isTestingMicrosoft}
                         variant="outline"
                         className="w-full"
                       >
-                        {isTesting ? (
+                        {isTestingMicrosoft ? (
                           <>
                             <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                             Testing...
@@ -625,9 +624,9 @@ export default function DashboardPage() {
                         )}
                       </Button>
                       
-                      {testResult && (
+                      {microsoftTestResult && (
                         <div className="mt-2 p-3 bg-gray-900 border border-gray-700 rounded-md">
-                          <pre className="text-xs whitespace-pre-wrap text-gray-100">{testResult}</pre>
+                          <pre className="text-xs whitespace-pre-wrap text-gray-100">{microsoftTestResult}</pre>
                         </div>
                       )}
 
@@ -638,26 +637,26 @@ export default function DashboardPage() {
                         {webhookSubscriptions.length > 0 ? (
                           <div className="space-y-2">
                             {webhookSubscriptions.map((subscription) => (
-                              <div key={subscription.subscription_id} className="flex items-center justify-between p-2 bg-gray-50 rounded-md">
+                              <div key={subscription.subscription_id} className="flex items-center justify-between p-4 rounded-xl border border-border shadow-sm">
                                 <div className="flex-1">
                                   <div className="flex items-center gap-2">
-                                    <Bell className="h-4 w-4 text-green-600" />
-                                    <span className="text-sm font-medium">Active Webhook</span>
+                                    <Bell className="h-5 w-5 text-green-600" />
+                                    <span className="text-base font-medium text-foreground">Active Webhook</span>
                                     <Badge variant="outline" className="text-xs">
                                       {subscription.is_active ? 'Active' : 'Inactive'}
                                     </Badge>
                                   </div>
-                                  <p className="text-xs text-muted-foreground mt-1">
+                                  <p className="text-sm text-muted-foreground mt-2">
                                     Expires: {new Date(subscription.expiration_date).toLocaleDateString()}
                                   </p>
                                 </div>
                                 <Button
                                   onClick={() => deleteWebhookSubscription(subscription.subscription_id)}
-                                  variant="outline"
-                                  size="sm"
-                                  className="text-red-600 hover:text-red-700"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="text-red-600 hover:text-red-700 bg-transparent"
                                 >
-                                  <BellOff className="h-4 w-4" />
+                                  <BellOff className="h-5 w-5" />
                                 </Button>
                               </div>
                             ))}
@@ -692,8 +691,8 @@ export default function DashboardPage() {
                         {webhookStatus && (
                           <div className={`mt-3 p-3 rounded-md text-sm ${
                             webhookStatus.includes('✅') 
-                              ? 'bg-green-50 text-green-800 border border-green-200' 
-                              : 'bg-red-50 text-red-800 border border-red-200'
+                              ? 'bg-green-950/50 text-green-400 border border-green-800' 
+                              : 'bg-red-950/50 text-red-400 border border-red-800'
                           }`}>
                             {webhookStatus}
                           </div>
@@ -721,53 +720,53 @@ export default function DashboardPage() {
                             {webhookProcessingStatus ? (
                               <div className="space-y-3">
                                 <div className="grid grid-cols-3 gap-2 text-sm">
-                                  <div className="text-center p-2 bg-blue-50 rounded-md">
-                                    <div className="font-semibold text-blue-600">
+                                  <div className="text-center p-2 bg-blue-950/50 rounded-md border border-blue-800/50">
+                                    <div className="font-semibold text-blue-400">
                                       {webhookProcessingStatus.recent_processing?.total_emails || 0}
                                     </div>
-                                    <div className="text-xs text-blue-500">Total Emails</div>
+                                    <div className="text-xs text-blue-300">Total Emails</div>
                                   </div>
-                                  <div className="text-center p-2 bg-green-50 rounded-md">
-                                    <div className="font-semibold text-green-600">
+                                  <div className="text-center p-2 bg-green-950/50 rounded-md border border-green-800/50">
+                                    <div className="font-semibold text-green-400">
                                       {webhookProcessingStatus.recent_processing?.ai_processed || 0}
                                     </div>
-                                    <div className="text-xs text-green-500">AI Processed</div>
+                                    <div className="text-xs text-green-300">AI Processed</div>
                                   </div>
-                                  <div className="text-center p-2 bg-purple-50 rounded-md">
-                                    <div className="font-semibold text-purple-600">
+                                  <div className="text-center p-2 bg-purple-950/50 rounded-md border border-purple-800/50">
+                                    <div className="font-semibold text-purple-400">
                                       {webhookProcessingStatus.recent_processing?.opportunities_detected || 0}
                                     </div>
-                                    <div className="text-xs text-purple-500">Opportunities</div>
+                                    <div className="text-xs text-purple-300">Opportunities</div>
                                   </div>
                                 </div>
                                 
                                 {webhookProcessingStatus.recent_processing?.recent_emails && 
                                  webhookProcessingStatus.recent_processing.recent_emails.length > 0 && (
                                   <div className="space-y-2">
-                                    <h5 className="text-sm font-medium text-gray-700">Recent Emails</h5>
+                                    <h5 className="text-sm font-medium text-foreground">Recent Emails</h5>
                                     {webhookProcessingStatus.recent_processing.recent_emails.slice(0, 3).map((email: any) => (
-                                      <div key={email.id} className="p-2 bg-gray-50 rounded-md text-xs">
+                                      <div key={email.id} className="p-2 bg-muted rounded-md text-xs border border-border">
                                         <div className="flex items-center justify-between">
                                           <div className="flex-1">
-                                            <div className="font-medium truncate">{email.subject || 'No Subject'}</div>
-                                            <div className="text-gray-500 truncate">
+                                            <div className="font-medium truncate text-foreground">{email.subject || 'No Subject'}</div>
+                                            <div className="text-muted-foreground truncate">
                                               To: {email.recipient_emails?.[0] || 'Unknown'}
                                             </div>
                                           </div>
                                           <div className="flex items-center gap-1 ml-2">
                                             {email.ai_analyzed && (
-                                              <Badge variant="outline" className="text-xs bg-green-50 text-green-700">
+                                              <Badge variant="outline" className="text-xs bg-green-950/50 text-green-400 border-green-800">
                                                 AI
                                               </Badge>
                                             )}
                                             {email.opportunity_detected && (
-                                              <Badge variant="outline" className="text-xs bg-purple-50 text-purple-700">
+                                              <Badge variant="outline" className="text-xs bg-purple-950/50 text-purple-400 border-purple-800">
                                                 Deal
                                               </Badge>
                                             )}
                                           </div>
                                         </div>
-                                        <div className="text-gray-400 mt-1">
+                                        <div className="text-muted-foreground mt-1">
                                           {new Date(email.webhook_received_at).toLocaleString()}
                                         </div>
                                       </div>
@@ -776,7 +775,7 @@ export default function DashboardPage() {
                                 )}
                               </div>
                             ) : (
-                              <div className="text-center py-4 text-sm text-gray-500">
+                              <div className="text-center py-4 text-sm text-muted-foreground">
                                 {isLoadingWebhookStatus ? (
                                   <div className="flex items-center justify-center gap-2">
                                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -798,17 +797,13 @@ export default function DashboardPage() {
           </TabsContent>
 
           <TabsContent value="logs" className="space-y-4">
-                            <LogsDashboard />
+            <LogsDashboard />
           </TabsContent>
 
           <TabsContent value="monitoring" className="space-y-4">
             <MonitoringProvider>
               <MonitoringDashboard />
             </MonitoringProvider>
-          </TabsContent>
-
-          <TabsContent value="connectivity" className="space-y-4">
-            <ConnectivityTest />
           </TabsContent>
         </Tabs>
       </div>
