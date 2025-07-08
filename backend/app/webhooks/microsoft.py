@@ -82,11 +82,14 @@ class MicrosoftWebhookManager:
             # Calculate expiration date (3 days from now, max allowed by Microsoft)
             expiration_date = datetime.now(timezone.utc) + timedelta(days=3)
 
+            # Format for Microsoft Graph API (must be in UTC without timezone offset)
+            expiration_iso = expiration_date.strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
+
             subscription_data = {
                 "changeType": "created",
                 "notificationUrl": notification_url,
                 "resource": "/me/mailFolders('sentitems')/messages",  # Only sent emails
-                "expirationDateTime": expiration_date.isoformat() + "Z",
+                "expirationDateTime": expiration_iso,
                 "clientState": f"user_{user_id}",  # Include user ID for webhook processing
             }
 
